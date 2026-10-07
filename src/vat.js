@@ -296,6 +296,43 @@ vec3 hsv2rgb(vec3 c){ vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0); vec3 p = abs(fr
   return m;
 }
 
+/** Depth material so animated instances cast correct, moving shadows. */
+export function createVatDepthMaterial(baked) {
+  const m = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uPosTex = { value: baked.posTex };
+    sh.uniforms.uTime = timeUniform;
+    sh.uniforms.uFps = { value: baked.fps };
+    sh.uniforms.uVerts = { value: baked.verts };
+    sh.uniforms.uTexW = { value: baked.texW };
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', `#include <common>
+uniform highp sampler2D uPosTex;
+uniform float uTime;
+uniform float uFps;
+uniform int uVerts;
+uniform int uTexW;
+attribute float aVid;
+attribute vec4 iClip;
+ivec2 vatCoord(int frame) {
+  int idx = frame * uVerts + int(aVid);
+  return ivec2(idx - (idx / uTexW) * uTexW, idx / uTexW);
+}`)
+      .replace('#include <begin_vertex>', `
+  float vatSpeed = abs(iClip.w);
+  float vatF = max(uTime - iClip.z, 0.0) * uFps * vatSpeed;
+  float vatCnt = iClip.y;
+  float vatF1;
+  if (iClip.w > 0.0) { vatF = mod(vatF, vatCnt); } else { vatF = min(vatF, vatCnt - 1.0); }
+  float vatF0 = floor(vatF);
+  float vatFr = vatF - vatF0;
+  if (iClip.w > 0.0) { vatF1 = mod(vatF0 + 1.0, vatCnt); } else { vatF1 = min(vatF0 + 1.0, vatCnt - 1.0); }
+  vec3 transformed = mix(texelFetch(uPosTex, vatCoord(int(iClip.x + vatF0)), 0).xyz, texelFetch(uPosTex, vatCoord(int(iClip.x + vatF1)), 0).xyz, vatFr);`);
+  };
+  m.customProgramCacheKey = () => 'vatdepth';
+  return m;
+}
+
 /** A pool of animated instances of one baked character. */
 export class Crowd {
   constructor(baked, max, material) {
@@ -311,6 +348,8 @@ export class Crowd {
     this.mesh = new THREE.InstancedMesh(geo, material, max);
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.mesh.frustumCulled = false;
+    this.mesh.castShadow = true;
+    this.mesh.customDepthMaterial = createVatDepthMaterial(baked);
     this.mesh.count = 0;
     this.free = [];
     for (let i = max - 1; i >= 0; i--) this.free.push(i);
@@ -335,6 +374,7 @@ export class Crowd {
     this.mesh.instanceMatrix.needsUpdate = true;
     this.active.delete(i);
     this.free.push(i);
+    this.free.sort((a, b) => b - a); // keep lowest index at the end so it is reused first
   }
   setTransform(i, x, y, z, yaw, scale) {
     this._q.setFromAxisAngle(this._up, yaw);
@@ -350,5 +390,11 @@ export class Crowd {
     this.clipAttr.needsUpdate = true;
   }
   flash(i, v) { this.flashAttr.array[i] = v; this.flashAttr.needsUpdate = true; }
-  commit() { this.mesh.instanceMatrix.needsUpdate = true; }
+  commit() {
+    // only draw up to the highest index in use (free list hands out low indices first)
+    let hi = -1;
+    for (const i of this.active) if (i > hi) hi = i;
+    this.mesh.count = hi + 1;
+    this.mesh.instanceMatrix.needsUpdate = true;
+  }
 }

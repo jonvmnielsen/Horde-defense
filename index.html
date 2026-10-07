@@ -23,7 +23,7 @@
   .pill { display: inline-flex; align-items: center; gap: 8px; background: var(--panel); border-radius: 999px; padding: 6px 14px 6px 6px; font-size: 20px; letter-spacing: 0.5px; box-shadow: 0 2px 8px var(--shadow); }
   .coin { width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff3b0, var(--gold) 45%, #c47a00); box-shadow: inset 0 -2px 0 rgba(0,0,0,0.25); }
   #troop { position: absolute; left: 0; top: 0; background: var(--blue); border: 3px solid #fff; color: #fff; border-radius: 12px; padding: 2px 12px; font-size: 22px; box-shadow: 0 3px 0 var(--blue-dark), 0 4px 10px var(--shadow); white-space: nowrap; will-change: transform; }
-  #bossbar { position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 46px); left: 50%; transform: translateX(-50%); width: min(72vw, 380px); opacity: 0; transition: opacity .3s; }
+  #bossbar { position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 92px); left: 50%; transform: translateX(-50%); width: min(72vw, 380px); opacity: 0; transition: opacity .3s; }
   #bossbar.on { opacity: 1; }
   #bossbar .name { text-align: center; font-size: 16px; letter-spacing: 2px; text-shadow: 0 2px 0 #000; margin-bottom: 4px; }
   #bossbar .track { height: 14px; border-radius: 8px; background: rgba(0,0,0,0.55); border: 2px solid #fff; overflow: hidden; }
@@ -37,6 +37,16 @@
   .floater.red { color: #ff6a55; -webkit-text-stroke-color: #5a0d06; font-size: 22px; }
   #banner { position: absolute; top: 34%; left: 0; right: 0; text-align: center; font-size: 64px; color: var(--red); -webkit-text-stroke: 7px #3a0603; paint-order: stroke fill; opacity: 0; transform: scale(0.6); }
   #banner.show { animation: banner 1.8s ease-out forwards; }
+  #banner.blue { color: #fff; -webkit-text-stroke-color: var(--blue-dark); }
+  #progress { position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 48px); left: 50%; transform: translateX(-50%); width: min(80vw, 400px); display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px; }
+  #progress .lvl { font-size: 16px; letter-spacing: 1px; text-shadow: 0 2px 0 rgba(0,0,0,0.5); white-space: nowrap; }
+  #progress .track { position: relative; height: 16px; border-radius: 9px; background: rgba(10, 16, 28, 0.6); border: 2px solid rgba(255,255,255,0.9); }
+  #progress .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 7px; background: linear-gradient(#7fd3ff, var(--blue) 60%, #1b4fb8); transition: width .2s linear; }
+  #progress .skull { position: absolute; right: -14px; top: 50%; width: 30px; height: 30px; transform: translateY(-50%); border-radius: 50%; background: #3a0603; border: 2px solid #fff; display: grid; place-items: center; font-size: 16px; line-height: 1; }
+  #progress.boss .fill { background: linear-gradient(#ff8a73, var(--red) 60%, #b5160b); }
+  #progress.boss .skull { animation: pulse .8s ease-in-out infinite; }
+  @keyframes pulse { 50% { transform: translateY(-50%) scale(1.25); } }
+  @media (prefers-reduced-motion: reduce) { #progress.boss .skull, #hint .hand { animation: none; } }
   @keyframes banner { 0% { opacity: 0; transform: scale(2.2); } 12% { opacity: 1; transform: scale(1); } 75% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0; transform: scale(1.1); } }
   #hint { position: absolute; bottom: max(28px, env(safe-area-inset-bottom)); left: 0; right: 0; text-align: center; font-size: 20px; text-shadow: 0 2px 0 rgba(0,0,0,0.5); transition: opacity .5s; }
   #hint .hand { display: inline-block; animation: swipe 1.6s ease-in-out infinite; }
@@ -46,12 +56,12 @@
   #loading.gone { opacity: 0; pointer-events: none; }
   #loading .bar { width: 220px; height: 12px; border-radius: 6px; background: rgba(0,0,0,0.3); margin-top: 14px; overflow: hidden; }
   #loading .bar i { display: block; height: 100%; width: 0; background: var(--gold); transition: width .2s; }
-  #over { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(8, 12, 22, 0.6); opacity: 0; pointer-events: none; transition: opacity .4s; font-family: var(--font); color: #fff; z-index: 4; }
-  #over.on { opacity: 1; pointer-events: auto; }
-  #over .card { background: var(--panel); border: 3px solid rgba(255,255,255,0.85); border-radius: 22px; padding: 22px 26px; text-align: center; width: min(86vw, 340px); }
-  #over h2 { margin: 0 0 14px; font-weight: 400; font-size: 34px; }
-  #over .row { display: flex; justify-content: space-between; font-size: 20px; padding: 6px 2px; border-bottom: 1px solid rgba(255,255,255,0.15); }
-  #over button { margin-top: 18px; font-family: var(--font); font-size: 24px; color: #fff; background: var(--blue); border: 3px solid #fff; border-radius: 14px; padding: 10px 26px; box-shadow: 0 4px 0 var(--blue-dark); cursor: pointer; }
+  #over, #win { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(8, 12, 22, 0.6); opacity: 0; pointer-events: none; transition: opacity .4s; font-family: var(--font); color: #fff; z-index: 4; }
+  #over.on, #win.on { opacity: 1; pointer-events: auto; }
+  #over .card, #win .card { background: var(--panel); border: 3px solid rgba(255,255,255,0.85); border-radius: 22px; padding: 22px 26px; text-align: center; width: min(86vw, 340px); }
+  #over h2, #win h2 { margin: 0 0 14px; font-weight: 400; font-size: 34px; }
+  #over .row, #win .row { display: flex; justify-content: space-between; font-size: 20px; padding: 6px 2px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+  #over button, #win button { margin-top: 18px; font-family: var(--font); font-size: 24px; color: #fff; background: var(--blue); border: 3px solid #fff; border-radius: 14px; padding: 10px 26px; box-shadow: 0 4px 0 var(--blue-dark); cursor: pointer; }
   #debug { position: absolute; bottom: 4px; left: 6px; font: 11px/1.2 ui-monospace, monospace; color: #fff; text-shadow: 0 1px 0 #000; }
 </style>
 <canvas id="c"></canvas>
@@ -60,6 +70,7 @@
   <div class="topbar">
     <div class="pill"><span class="coin"></span><span id="gold">0</span></div>
   </div>
+  <div id="progress"><span class="lvl" id="levelLabel">BANE 1</span><div class="track"><div class="fill"></div><span class="skull" aria-hidden="true">💀</span></div></div>
   <div id="bossbar"><div class="name">SKELETKONGEN</div><div class="track"><i></i></div></div>
   <div id="troop"><b>0</b></div>
   <div id="banner"></div>
@@ -69,10 +80,20 @@
 <div id="over">
   <div class="card">
     <h2>Truppen er faldet</h2>
+    <div class="row"><span>Nået</span><span id="overProgress">0 %</span></div>
     <div class="row"><span>Guld</span><span id="overGold">0</span></div>
     <div class="row"><span>Drab</span><span id="overKills">0</span></div>
     <div class="row"><span>Tid</span><span id="overTime">0:00</span></div>
     <button id="again">Prøv igen</button>
+  </div>
+</div>
+<div id="win">
+  <div class="card">
+    <h2 id="winTitle">Bane 1 klaret!</h2>
+    <div class="row"><span>Overlevende (tager hjem)</span><span id="winTroop">0</span></div>
+    <div class="row"><span>Guld</span><span id="winGold">0</span></div>
+    <div class="row"><span>Drab</span><span id="winKills">0</span></div>
+    <button id="next">Næste bane</button>
   </div>
 </div>
 <div id="loading"><div style="text-align:center">Indlæser<div class="bar"><i></i></div></div></div>

@@ -152,7 +152,8 @@ export function buildWorld(scene, envGltf) {
       mats.forEach((M, i) => im.setMatrixAt(i, m.multiplyMatrices(M, part.matrix)));
       im.castShadow = true;
       im.receiveShadow = true;
-      if (/mountain|hills/.test(name)) { im.castShadow = false; }
+      // shadows are re-rendered every frame now (animated units), so only pieces near the playfield cast them
+      if (/mountain|hills|tree|building|crypt|floor_tile/.test(name)) { im.castShadow = false; }
       group.add(im);
     }
   }
