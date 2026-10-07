@@ -108,6 +108,7 @@ export class Bolts {
     this.s = new THREE.Vector3();
     this.p = new THREE.Vector3();
   }
+  setColor(c) { if (this._c !== c) { this._c = c; this.mesh.material.color.setRGB(c[0], c[1], c[2]); } }
   fire(from, to, speed, onHit) {
     if (this.list.length >= this.max) { onHit(); return; }
     const d = from.distanceTo(to);
@@ -161,7 +162,9 @@ export class Floaters {
       it.t += dt;
       if (it.t >= it.life) { it.el.remove(); continue; }
       const p = this.v.set(it.x, it.y + it.rise * Math.sqrt(it.t / it.life), it.z).project(this.camera);
-      const sx = (p.x * 0.5 + 0.5) * w, sy = (-p.y * 0.5 + 0.5) * h;
+      // keep the label on screen (long words near the edges would otherwise be cut off)
+      const half = (it.half ||= it.el.offsetWidth / 2 + 8);
+      const sx = Math.min(w - half, Math.max(half, (p.x * 0.5 + 0.5) * w)), sy = (-p.y * 0.5 + 0.5) * h;
       const a = it.t / it.life;
       const sc = a < 0.15 ? 0.6 + (a / 0.15) * 0.7 : 1.3 - Math.min(0.3, (a - 0.15) * 0.6);
       it.el.style.transform = `translate(${sx}px, ${sy}px) translate(-50%,-50%) scale(${sc})`;

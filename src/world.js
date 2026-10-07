@@ -1,10 +1,11 @@
 // Static environment: lanes, courtyard, ruined graveyard surroundings, sky.
 import * as THREE from 'three';
 
-export const LANE_W = 4;
+export const LANE_W = 6;
 export const LANES = [-LANE_W, 0, LANE_W]; // lane centre x
 export const LANE_START_Z = -78; // far end
-export const LANE_END_Z = -6; // where lanes open into the courtyard
+export const LANE_END_Z = -9; // where lanes open into the courtyard
+export const EDGE = LANE_W * 1.5; // x of the outer lane walls
 
 function rng(seed) {
   let s = seed >>> 0;
@@ -40,55 +41,60 @@ export function buildWorld(scene, envGltf) {
     (placements[name] ||= []).push(tmp.matrix.clone());
   }
 
-  // ---- floor of the three lanes + courtyard ----
-  for (let z = LANE_END_Z; z > LANE_START_Z - 8; z -= 4) {
+  // ---- floor of the three lanes + courtyard (4x4 tiles scaled to the 6-wide lanes) ----
+  const TS = LANE_W / 4;
+  for (let z = LANE_END_Z; z > LANE_START_Z - 10; z -= LANE_W) {
     for (const x of LANES) {
-      const v = r();
-      place(v < 0.12 ? 'floor_tile_large_rocks' : 'floor_tile_large', x, 0.05, z - 2, Math.floor(r() * 4) * Math.PI / 2);
+      place('floor_tile_large', x, 0.05, z - LANE_W / 2, Math.floor(r() * 4) * Math.PI / 2, TS, 1);
     }
   }
-  // courtyard (player area) – 4 tiles wide each side
-  for (let z = LANE_END_Z + 4; z <= 10; z += 4) {
-    for (let x = -10; x <= 10; x += 4) {
-      place(r() < 0.1 ? 'floor_tile_large_rocks' : 'floor_tile_large', x, 0.05, z - 2, Math.floor(r() * 4) * Math.PI / 2);
+  for (let z = LANE_END_Z + LANE_W; z <= 14; z += LANE_W) {
+    for (let x = -EDGE - 3; x <= EDGE + 3; x += LANE_W) {
+      place('floor_tile_large', x, 0.05, z - LANE_W / 2, Math.floor(r() * 4) * Math.PI / 2, TS, 1);
     }
   }
 
   // ---- lane dividers: low barriers between lanes, walls on the outside ----
   for (let z = LANE_END_Z - 2; z > LANE_START_Z; z -= 4) {
-    for (const x of [-LANE_W * 1.5, LANE_W * 1.5]) {
-      place('wall', x, 0, z, Math.PI / 2, 1, 0.55);
-    }
-    for (const x of [-LANE_W / 2, LANE_W / 2]) {
-      place('barrier', x, 0.05, z, Math.PI / 2, 1, 0.9);
-    }
+    for (const x of [-EDGE, EDGE]) place('wall', x, 0, z, Math.PI / 2, 1, 0.55);
+    for (const x of [-LANE_W / 2, LANE_W / 2]) place('barrier', x, 0.05, z, Math.PI / 2, 1, 0.9);
   }
-  // pillars at lane mouths
-  for (const x of [-LANE_W * 1.5, -LANE_W / 2, LANE_W / 2, LANE_W * 1.5]) place('pillar', x, 0, LANE_END_Z, 0, 0.55, 0.6);
-  for (const x of [-LANE_W * 1.5, LANE_W * 1.5]) {
-    place('banner_patternA_red', x, 1.4, LANE_END_Z - 0.9, Math.PI, 0.7);
-  }
-  // torches on outer walls
+  // pillars and banners at the lane mouths
+  for (const x of [-EDGE, -LANE_W / 2, LANE_W / 2, EDGE]) place('pillar', x, 0, LANE_END_Z, 0, 0.6, 0.65);
+  for (const x of [-EDGE, EDGE]) place('banner_patternA_red', x, 1.5, LANE_END_Z - 0.95, Math.PI, 0.75);
+  // torches and banners along the outer walls, rubble and bones along the lane edges (detail at play distance)
   const torches = [];
-  for (let z = LANE_END_Z - 6; z > LANE_START_Z + 10; z -= 12) {
-    for (const x of [-LANE_W * 1.5 - 0.6, LANE_W * 1.5 + 0.6]) { place('torch_lit', x, 2.0, z, 0, 0.9); torches.push(new THREE.Vector3(x, 2.6, z)); }
+  for (let z = LANE_END_Z - 5; z > LANE_START_Z + 6; z -= 8) {
+    for (const sx of [-1, 1]) {
+      place('torch_lit', sx * (EDGE + 0.6), 2.0, z, 0, 0.9); torches.push(new THREE.Vector3(sx * (EDGE + 0.6), 2.6, z));
+      if (r() < 0.5) place(sx < 0 ? 'banner_thin_blue' : 'banner_patternA_red', sx * (EDGE + 0.55), 0.6, z - 4, sx < 0 ? -Math.PI / 2 : Math.PI / 2, 0.6);
+    }
+  }
+  for (let z = LANE_END_Z - 3; z > LANE_START_Z; z -= 2.2 + r() * 2.5) {
+    const lane = Math.floor(r() * 3);
+    const side = r() < 0.5 ? -1 : 1;
+    const x = LANES[lane] + side * (LANE_W / 2 - 0.45 - r() * 0.3);
+    place(['skull', 'bone_A', 'bone_B', 'ribcage'][Math.floor(r() * 4)], x, 0.06, z, r() * 6, 0.55);
   }
 
-  // ---- courtyard edges ----
-  for (let z = -2; z <= 10; z += 4) {
-    place('wall_half', -12.2, 0, z, Math.PI / 2, 1, 0.45);
-    place('wall_half', 12.2, 0, z - 2, -Math.PI / 2, 1, 0.45);
+  // ---- courtyard edges (the player's camp) ----
+  for (let z = LANE_END_Z + 2; z <= 14; z += 4) {
+    place('wall_half', -EDGE - 4.2, 0, z, Math.PI / 2, 1, 0.45);
+    place('wall_half', EDGE + 4.2, 0, z - 2, -Math.PI / 2, 1, 0.45);
   }
-  place('barrel_large', -10.3, 0, 1.5, 0, 0.6); place('crates_stacked', -10.5, 0, 4.8, 0.4, 0.7);
-  place('box_large', 10.4, 0, 2.2, 0.3, 0.7); place('barrel_large', 10.2, 0, 5.5, 0, 0.6);
-  place('sword_shield_broken', 9.6, 0.6, -2.4, 0.5, 0.7);
+  place('barrel_large', -EDGE - 2.4, 0, -4, 0, 0.6); place('crates_stacked', -EDGE - 2.6, 0, -0.5, 0.4, 0.7);
+  place('box_large', EDGE + 2.4, 0, -3.5, 0.3, 0.7); place('barrel_large', EDGE + 2.3, 0, 0.5, 0, 0.6);
+  place('sword_shield_broken', EDGE + 1.6, 0.6, -6.6, 0.5, 0.7);
+  place('banner_thin_blue', -EDGE - 1.2, 0.6, LANE_END_Z + 1.2, Math.PI, 0.8);
+  place('banner_thin_blue', EDGE + 1.2, 0.6, LANE_END_Z + 1.2, Math.PI, 0.8);
+  place('torch_lit', -EDGE - 1.5, 2.0, -3, 0, 0.9); place('torch_lit', EDGE + 1.5, 2.0, -3, 0, 0.9);
 
   // ---- surroundings: graveyard left, ruins right ----
   function scatterSide(side) {
     const sx = side;
     for (let z = 4; z > -110; z -= 3.2) {
-      const xNear = sx * (LANE_W * 1.5 + 2.5 + r() * 2);
-      const xFar = sx * (LANE_W * 1.5 + 7 + r() * 8);
+      const xNear = sx * (EDGE + 2.5 + r() * 2);
+      const xFar = sx * (EDGE + 7 + r() * 8);
       const v = r();
       if (side < 0) {
         if (v < 0.35) place(['grave_A', 'grave_B', 'gravestone', 'grave_A_destroyed'][Math.floor(r() * 4)], xNear, 0, z, (r() - 0.5) * 0.5 + Math.PI * 0.5 * sx, 0.7);
@@ -111,14 +117,14 @@ export function buildWorld(scene, envGltf) {
   scatterSide(1);
 
   // fence along the graveyard
-  for (let z = 2; z > -100; z -= 4) {
-    place(r() < 0.25 ? 'fence_broken' : 'fence', -LANE_W * 1.5 - 1.4, 0, z, Math.PI / 2, 0.8);
-    place(r() < 0.3 ? 'fence_pillar_broken' : 'fence_pillar', -LANE_W * 1.5 - 1.4, 0, z + 2, 0, 0.8);
+  for (let z = LANE_END_Z - 1; z > -100; z -= 4) {
+    place(r() < 0.25 ? 'fence_broken' : 'fence', -EDGE - 1.4, 0, z, Math.PI / 2, 0.8);
+    place(r() < 0.3 ? 'fence_pillar_broken' : 'fence_pillar', -EDGE - 1.4, 0, z + 2, 0, 0.8);
   }
   // landmarks
-  place('crypt', -26, 0, -40, Math.PI / 2, 1.1);
-  place('arch_gate', -LANE_W * 1.5 - 1.4, 0, -22, Math.PI / 2, 0.9);
-  place('building_tower_A_blue', 20, 0, -12, -0.4, 6);
+  place('crypt', -28, 0, -40, Math.PI / 2, 1.1);
+  place('arch_gate', -EDGE - 1.4, 0, -22, Math.PI / 2, 0.9);
+  place('building_tower_A_blue', 22, 0, -14, -0.4, 6);
   place('building_tower_catapult_blue', 22, 0, -52, 0.6, 6);
   place('building_destroyed', 26, 0, -30, 0.3, 9);
   place('building_destroyed', 30, 0, -75, 1.3, 10);
@@ -128,14 +134,14 @@ export function buildWorld(scene, envGltf) {
   const trees = ['tree_pine_orange_large', 'tree_pine_yellow_large', 'tree_pine_orange_medium', 'tree_pine_yellow_medium', 'tree_dead_large'];
   for (let row = 0; row < 4; row++) {
     for (let x = -70; x <= 70; x += 4.5 + r() * 3) {
-      if (Math.abs(x) < 9 && row < 2) continue;
+      if (Math.abs(x) < 12 && row < 2) continue;
       place(trees[Math.floor(r() * (row < 2 ? 5 : 4))], x + r() * 2, 0, -96 - row * 7 - r() * 4, r() * 6, 1.4 + r() * 0.9 + row * 0.25);
     }
   }
   // side forests
   for (const side of [-1, 1]) {
     for (let z = 12; z > -96; z -= 4 + r() * 3) {
-      place(trees[Math.floor(r() * 4)], side * (30 + r() * 14), 0, z, r() * 6, 1.4 + r() * 0.8);
+      place(trees[Math.floor(r() * 4)], side * (33 + r() * 14), 0, z, r() * 6, 1.4 + r() * 0.8);
       if (r() < 0.6) place(trees[Math.floor(r() * 5)], side * (46 + r() * 16), 0, z - 2, r() * 6, 1.6 + r() * 0.8);
     }
   }

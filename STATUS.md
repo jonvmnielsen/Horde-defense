@@ -3,20 +3,19 @@
 _Senest opdateret: 2026-10-07_
 
 ## Nu
-Runde 2 efter Jons første test: balance, banestruktur og finish.
+Runde 3 efter Jons anden test: sværere, mere action på skærmen, skarpere.
 
-- **Bane-struktur:** hver bane varer ~75 s med en fremskridtsbjælke øverst og ender med bossen (Skeletkongen). Dræbt boss = bane klaret → næste bane. Truppen falder = prøv igen.
-- **Trup:** antallet er ubegrænset; højst 150 soldater vises, og hver vist soldat skyder for flere, når truppen er større.
-- **Skydning:** hver soldat skyder én bolt pr. armbrøst-animation, i takt med animationen. Står sporet tomt, sigter soldaten i stedet.
-- **Fjender:** hurtigere (~4,4 enheder/s), bliver sejere gennem banen, flere krigere mod slutningen.
-- **Skygger:** alle figurer kaster rigtige, animerede skygger; lyset kommer fra siden, så skyggerne kan ses.
-- **Balance (bot-test, `tools/sim.py`):** spiller man kun ét spor, taber man på bane 1. Skifter man spor (+1 → mur → forsvar), klares bane 1 og 2. Bane 3+ er svære; den rigtige sværhedskurve kommer med basen.
+- **Layout:** spor 6 enheder brede (før 4), truppen står længere fremme, kameraet er tættere og følger truppen sidelæns. Højst 110 soldater tegnes, så truppen holder sig på skærmen.
+- **Rækkevidde:** armbrøsterne rækker 32 enheder frem, så kampen foregår på skærmen og ikke ude ved horisonten.
+- **Sidespor:** venstre og højre trækker hver fra deres egen blandede bunke: +1-rækker, +5, fjende-grupper, fæstninger (mur + 99), våbenkister bag en mur, 2× skud (10 s) og bomber (rammer horden i midten). Starten er fast: tidlig våbenkiste i højre side.
+- **Våben:** 5 trin pr. bane (Armbrøst → Stålbolte → Ildbolte → Frostbolte → Tordenbolte), hver med egen boltfarve; nulstilles hver bane.
+- **Sværhed:** fjender ~5,4 enheder/s, op til ~9,5 i sekundet i midten, sejere gennem banen. Bot-test: kun midten taber efter ~30-40 s; en spiller, der samler soldater og våben, klarer bane 1. Bane 2-3 er svære.
+- **Skarphed:** op til 2× opløsning på mobil, anisotropisk filtrering, flere detaljer langs sporene (fakler, bannere, knogler).
 
 ## Udgivelse
 - Live på https://jonvmnielsen.github.io/Horde-defense/ (GitHub Pages, udgives automatisk ved push til `main`).
-- Claudes egen artifact-visning afviser Jons iPhone; derfor GitHub Pages.
 
 ## Næste
-1. Jon tester runde 2 på telefon: sværhed, fart, skydning, skygger.
-2. Beslut tema (fantasy som nu, eller moderne militær med andre modeller).
-3. Trup-loft eller bedre våben (se DECISIONS).
+1. Jon tester runde 3 på telefon.
+2. Beslut om banerne skal have en slutning (fast antal pr. kapitel) eller fortsætte uendeligt.
+3. Beslut tema (fantasy som nu, eller moderne militær med andre modeller).

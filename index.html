@@ -21,6 +21,11 @@
   #hud { position: fixed; inset: 0; pointer-events: none; font-family: var(--font); color: var(--ink); }
   .topbar { position: absolute; top: max(12px, env(safe-area-inset-top)); left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: center; }
   .pill { display: inline-flex; align-items: center; gap: 8px; background: var(--panel); border-radius: 999px; padding: 6px 14px 6px 6px; font-size: 20px; letter-spacing: 0.5px; box-shadow: 0 2px 8px var(--shadow); }
+  .topbar .right { display: flex; gap: 8px; align-items: center; }
+  .pill.weapon { padding: 6px 14px 6px 8px; font-size: 17px; }
+  .pill.weapon .bolt { width: 22px; height: 6px; border-radius: 3px; background: var(--wc, var(--gold)); box-shadow: 0 0 10px var(--wc, var(--gold)); }
+  .pill.small { padding: 6px 12px; font-size: 17px; color: #ffb066; display: none; }
+  .pill.small.on { display: inline-flex; }
   .coin { width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff3b0, var(--gold) 45%, #c47a00); box-shadow: inset 0 -2px 0 rgba(0,0,0,0.25); }
   #troop { position: absolute; left: 0; top: 0; background: var(--blue); border: 3px solid #fff; color: #fff; border-radius: 12px; padding: 2px 12px; font-size: 22px; box-shadow: 0 3px 0 var(--blue-dark), 0 4px 10px var(--shadow); white-space: nowrap; will-change: transform; }
   #bossbar { position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 92px); left: 50%; transform: translateX(-50%); width: min(72vw, 380px); opacity: 0; transition: opacity .3s; }
@@ -33,8 +38,11 @@
     -webkit-text-stroke: 5px var(--blue-dark); paint-order: stroke fill; text-shadow: 0 3px 0 rgba(0,0,0,0.35); }
   .floater.blue { color: #ffffff; -webkit-text-stroke-color: var(--blue-dark); }
   .floater.gold { color: var(--gold); -webkit-text-stroke-color: var(--gold-dark); }
-  .floater.big { font-size: 42px; }
+  .floater.big { font-size: 36px; }
+  .floater.purple { color: #e3c2ff; -webkit-text-stroke-color: #3b0a7a; }
+  .floater.orange { color: #ffc28a; -webkit-text-stroke-color: #6a2200; }
   .floater.red { color: #ff6a55; -webkit-text-stroke-color: #5a0d06; font-size: 22px; }
+  .floater.red.big { font-size: 36px; }
   #banner { position: absolute; top: 34%; left: 0; right: 0; text-align: center; font-size: 64px; color: var(--red); -webkit-text-stroke: 7px #3a0603; paint-order: stroke fill; opacity: 0; transform: scale(0.6); }
   #banner.show { animation: banner 1.8s ease-out forwards; }
   #banner.blue { color: #fff; -webkit-text-stroke-color: var(--blue-dark); }
@@ -69,6 +77,10 @@
 <div id="hud">
   <div class="topbar">
     <div class="pill"><span class="coin"></span><span id="gold">0</span></div>
+    <div class="right">
+      <div class="pill small" id="rapid">2× <b>0 s</b></div>
+      <div class="pill weapon" id="weapon"><span class="bolt" aria-hidden="true"></span><b>Armbrøst</b></div>
+    </div>
   </div>
   <div id="progress"><span class="lvl" id="levelLabel">BANE 1</span><div class="track"><div class="fill"></div><span class="skull" aria-hidden="true">💀</span></div></div>
   <div id="bossbar"><div class="name">SKELETKONGEN</div><div class="track"><i></i></div></div>

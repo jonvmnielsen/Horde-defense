@@ -15,3 +15,8 @@
 | 2026-10-07 | Hver bane starter med en frisk trup (12 + 8 pr. bane); overlevende "går hjem" | Overførte tropper gjorde næste bane triviel. Overlevende får betydning, når basen bygges. |
 | 2026-10-07 | Balance justeres med bot-simulering (`tools/sim.py`) | Hurtig, gentagelig måling i stedet for gætværk; mål: ét-spors-spil taber, spor-skift vinder. |
 | 2026-10-07 | Lys fra siden og svagere himmellys | Skygger faldt bag figurerne og blev overdøvet af fyldlys. |
+| 2026-10-07 | Bredere spor (6), truppen længere frem, kamera tættere og følger truppen | Jon: soldater forsvandt i bunden, for meget af skærmen stod passivt. |
+| 2026-10-07 | Armbrøst-rækkevidde 32 enheder | Fjender og genstande døde ude ved horisonten; nu sker kampen på skærmen. |
+| 2026-10-07 | Sidesporene får tilfældige hændelser fra hver sin bunke | "Samme fordele i hver side" var for nemt; hver side skal kræve et valg. |
+| 2026-10-07 | Våbenopgraderinger i 5 trin fra kister i sidesporene, nulstilles hver bane | Jon: det skal være nødvendigt at få både flere soldater og bedre våben. Permanente opgraderinger hører til basen senere. |
+| 2026-10-07 | Højst 110 soldater tegnes (før 150) | Truppen skal kunne være på en telefonskærm. |

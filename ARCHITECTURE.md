@@ -22,4 +22,7 @@ Ved indlæsning afspilles hver valgt animation på CPU'en, og hver vertex' posit
 - Fjender, der når gårdspladsen, stormer truppen og koster soldater (skelet 1, kriger 3).
 - `S.count` er truppens rigtige antal; højst `TROOP.visibleMax` vises. Skud-skade = antal / viste.
 - Banens faser: `horde` → `boss` → `won` / `lost`. Fremskridt = tid / `duration`.
+- Sidespor: `S.side[]` trækker hændelser fra `EVENTS.deck` (levels.js); `sideEvent()` lægger genstande (`S.items`) og mure (`S.walls`) på transportbåndet. Genstande kan ikke passere en stående mur i samme spor.
+- Våben: `S.weapon` indekserer `WEAPON[]` (skade-multiplikator og boltfarve). `S.rapid` = sekunder tilbage med 2× skud.
+- `tools/sim.py` bruger `botTarget()`: forsvar sporet med størst trussel, ellers det spor med bedst belønning pr. liv.
 - Animerede figurer kaster skygger via `createVatDepthMaterial` (samme VAT-opslag i dybde-pass).
