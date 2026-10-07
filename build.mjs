@@ -5,7 +5,21 @@ import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 fs.rmSync('dist', { recursive: true, force: true });
 fs.mkdirSync('dist/assets', { recursive: true });
 await esbuild.build({ entryPoints: ['src/main.js'], bundle: true, format: 'esm', target: 'es2022', minify: true, outfile: 'dist/game.js', alias: { 'three/addons': './node_modules/three/examples/jsm' } });
-fs.copyFileSync('index.html', 'dist/index.html');
+// index.html holds only the page body; wrap it in a full document for standalone hosting (GitHub Pages)
+const page = fs.readFileSync('index.html', 'utf8');
+fs.writeFileSync('dist/index.html', `<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2f62b8">
+</head>
+<body>
+${page}
+</body>
+</html>
+`);
 // artifacts don't serve .glb, so ship each model as self-contained glTF JSON (buffers/images as data URIs)
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
 for (const f of fs.readdirSync('public/assets').filter((f) => f.endsWith('.glb'))) {

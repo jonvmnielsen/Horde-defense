@@ -9,9 +9,8 @@ Visuel test af kampdelen er bygget og afventer Jons vurdering af finish og ydels
 - Blå armbrøstskytter (op til ~400), rød horde (op til ~660), boss hvert ~50. sekund.
 - Effekter: skygger, skudspor, mundingsild, gnister, støv, tal der popper op, kamerarystelser.
 
-## Blokeret
-- Claude kan ikke pushe til repoet endnu (Claude GitHub App mangler adgang).
-- GitHub Pages skal slås til (Settings → Pages → Source: GitHub Actions).
+## Udgivelse
+- Live på https://jonvmnielsen.github.io/Horde-defense/ (GitHub Pages, udgives automatisk ved push til `main`).
 - Claudes egen artifact-visning afviser Jons iPhone; derfor GitHub Pages.
 
 ## Næste
