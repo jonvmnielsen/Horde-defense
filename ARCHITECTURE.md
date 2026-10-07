@@ -6,6 +6,8 @@ src/main.js           opsætning (renderer, lys, post-processing), spillogik, HU
 src/vat.js            bager glTF-animationer til teksturer + instanced "Crowd"-pulje
 src/world.js          statisk miljø: spor, gårdsplads, kirkegård, ruiner, skov, himmel
 src/fx.js             partikler, armbrøstbolte, flydende tal
+src/levels.js         al balance: banelængde, fjendetal, liv, mur, boss, guld
+tools/sim.py          spiller hele baner headless med bots og printer resultatet
 index.html            HUD og styling
 build.mjs             esbuild-bundle + glb → glTF-JSON → dist/
 .github/workflows     bygger og udgiver dist/ til GitHub Pages ved push til main
@@ -17,4 +19,7 @@ Ved indlæsning afspilles hver valgt animation på CPU'en, og hver vertex' posit
 ## Spillogik (main.js)
 - Mål pr. spor sorteres nærmest først; hvert skud reserverer skade (`pending`), så ilden spredes uden overkill.
 - Truppen står i en solsikke-formation, der bliver bredere med størrelsen; hver soldat skyder i det spor, den står i.
-- Fjender, der når gårdspladsen, stormer truppen og koster én soldat hver.
+- Fjender, der når gårdspladsen, stormer truppen og koster soldater (skelet 1, kriger 3).
+- `S.count` er truppens rigtige antal; højst `TROOP.visibleMax` vises. Skud-skade = antal / viste.
+- Banens faser: `horde` → `boss` → `won` / `lost`. Fremskridt = tid / `duration`.
+- Animerede figurer kaster skygger via `createVatDepthMaterial` (samme VAT-opslag i dybde-pass).
