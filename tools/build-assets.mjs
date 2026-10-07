@@ -2,7 +2,8 @@
 // Characters: keep only needed animations + props. Environment: merge pieces into one env.glb.
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { prune, dedup, mergeDocuments, unpartition } from '@gltf-transform/functions';
+import { prune, dedup, mergeDocuments, unpartition, simplify, weld } from '@gltf-transform/functions';
+import { MeshoptSimplifier } from 'meshoptimizer';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -19,6 +20,13 @@ const characters = [
     anims: ['Running_A', 'Walking_D_Skeletons', 'Death_C_Skeletons', 'Death_A', '1H_Melee_Attack_Chop'], drop: [] },
   { src: `${SK}/Skeleton_Warrior.glb`, out: 'skeleton_warrior.glb',
     anims: ['Running_A', 'Walking_D_Skeletons', 'Death_C_Skeletons', '2H_Melee_Attack_Chop', 'Hit_A', 'Idle_Combat'], drop: [] },
+  // low-poly skeleton for the big horde (~35% of the triangles; they are small on screen)
+  { src: `${SK}/Skeleton_Minion.glb`, out: 'skeleton_minion_lod.glb', simplify: 0.25,
+    anims: ['Running_A', 'Walking_D_Skeletons', 'Death_C_Skeletons'], drop: [] },
+  // hero: the mage freed from the stone prison
+  { src: `${AD}/Mage.glb`, out: 'mage.glb',
+    anims: ['Spellcast_Shoot', 'Idle', 'Running_A', 'Cheer', 'Death_A'],
+    drop: ['Spellbook', 'Spellbook_open', '1H_Wand'] },
   { src: `${AD}/Rogue_Hooded.glb`, out: 'rogue.glb',
     anims: ['2H_Ranged_Shooting', '2H_Ranged_Aiming', 'Running_A', 'Death_A', 'Cheer'],
     drop: ['Knife_Offhand', '1H_Crossbow', 'Knife', 'Throwable'] },
@@ -37,6 +45,10 @@ for (const c of characters) {
     for (const s of a.listSamplers()) if (!a.listChannels().some((ch) => ch.getSampler() === s)) s.dispose();
   }
   await doc.transform(prune(), dedup());
+  if (c.simplify) {
+    await MeshoptSimplifier.ready;
+    await doc.transform(weld(), simplify({ simplifier: MeshoptSimplifier, ratio: c.simplify, error: 0.06, lockBorder: false }));
+  }
   for (const acc of root.listAccessors()) {
     if (acc.listParents().every((p) => p.propertyType === 'Root')) acc.dispose();
   }

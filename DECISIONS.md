@@ -20,3 +20,8 @@
 | 2026-10-07 | Sidesporene får tilfældige hændelser fra hver sin bunke | "Samme fordele i hver side" var for nemt; hver side skal kræve et valg. |
 | 2026-10-07 | Våbenopgraderinger i 5 trin fra kister i sidesporene, nulstilles hver bane | Jon: det skal være nødvendigt at få både flere soldater og bedre våben. Permanente opgraderinger hører til basen senere. |
 | 2026-10-07 | Højst 110 soldater tegnes (før 150) | Truppen skal kunne være på en telefonskærm. |
+| 2026-10-07 | Mange svage fjender i stedet for få seje | Referencen viser en horde der fylder sporet; ét skud pr. skelet i starten. |
+| 2026-10-07 | Lav-poly skelet (meshoptimizer, 36 %) og ingen rigtige skygger på horden | Op til ~1.200 skeletter på skærmen skal kunne køre på en telefon. |
+| 2026-10-07 | Soldater skyder altid; tomme skud lander i jorden ved max rækkevidde | Jon: ilden skal være konstant, også i tomme spor. |
+| 2026-10-07 | Ingen udglatning på styringen | Jon oplevede forsinkelse; truppen følger nu fingeren direkte. |
+| 2026-10-07 | Helte befries fra stenfanger; stenen brydes i 10 trin | Jons idé om gradvist færre sten, lavet i 3D med klippestykker i stedet for stillbilleder. |

@@ -3,14 +3,14 @@
 _Senest opdateret: 2026-10-07_
 
 ## Nu
-Runde 3 efter Jons anden test: sværere, mere action på skærmen, skarpere.
+Runde 4 efter Jons tredje test: masser af fjender, konstant ild, øjeblikkelig styring, helte.
 
-- **Layout:** spor 6 enheder brede (før 4), truppen står længere fremme, kameraet er tættere og følger truppen sidelæns. Højst 110 soldater tegnes, så truppen holder sig på skærmen.
-- **Rækkevidde:** armbrøsterne rækker 32 enheder frem, så kampen foregår på skærmen og ikke ude ved horisonten.
-- **Sidespor:** venstre og højre trækker hver fra deres egen blandede bunke: +1-rækker, +5, fjende-grupper, fæstninger (mur + 99), våbenkister bag en mur, 2× skud (10 s) og bomber (rammer horden i midten). Starten er fast: tidlig våbenkiste i højre side.
-- **Våben:** 5 trin pr. bane (Armbrøst → Stålbolte → Ildbolte → Frostbolte → Tordenbolte), hver med egen boltfarve; nulstilles hver bane.
-- **Sværhed:** fjender ~5,4 enheder/s, op til ~9,5 i sekundet i midten, sejere gennem banen. Bot-test: kun midten taber efter ~30-40 s; en spiller, der samler soldater og våben, klarer bane 1. Bane 2-3 er svære.
-- **Skarphed:** op til 2× opløsning på mobil, anisotropisk filtrering, flere detaljer langs sporene (fakler, bannere, knogler).
+- **Horde:** midtersporet fyldes (6 → 26 fjender i sekundet gennem banen, stormløb på 50-110). Skeletterne er svage enkeltvis (lav-poly model, ~1.900 trekanter) og kaster kun kontaktskygger, så ydelsen holder.
+- **Konstant ild:** alle soldater skyder i hver armbrøst-cyklus; uden mål flyver bolten til max rækkevidde og slår ned i jorden.
+- **Styring:** truppen følger fingeren 1:1 uden udglatning; opløsning max 1,5× med hurtigere automatisk nedskalering.
+- **Helte:** "BEFRI HELT"-fanger i sidesporene: en magiker frosset i sten, klippestykker falder af i 10 trin når man skyder. Befriet helt står foran truppen og kaster ildkugler med område-skade (max 3).
+- **Større valg:** "VÅBEN ++" (to våbentrin på én gang, bag en tyk mur), fæstning (+99), fanger, almindelige våbenkister, 2× skud, bomber, fjende-grupper på 15-45.
+- **Bot-test:** kun midten taber efter ~30 s; en aktiv spiller vinder bane 1 og 2 (~1.600-2.000 drab pr. bane).
 
 ## Udgivelse
 - Live på https://jonvmnielsen.github.io/Horde-defense/ (GitHub Pages, udgives automatisk ved push til `main`).

@@ -22,7 +22,7 @@ export const WEAPON = [
 
 // Side-lane events. Each side lane draws from its own shuffled copy of this deck, so left and right differ.
 export const EVENTS = {
-  deck: ['plus1', 'plus1', 'plus1', 'plus1', 'plus5', 'plus5', 'squad', 'squad', 'fort', 'weapon', 'weapon', 'rapid', 'bomb'],
+  deck: ['plus1', 'plus1', 'plus1', 'plus1', 'plus5', 'plus5', 'squad', 'squad', 'fort', 'weapon', 'weapon', 'weapon2', 'prisoner', 'rapid', 'bomb'],
   gap: [0.8, 2.4], // seconds of empty lane between events
 };
 
@@ -31,27 +31,33 @@ export function levelConfig(n) {
   return {
     n,
     duration: 80 + k * 10, // seconds of horde before the boss arrives (this is the progress bar)
-    spawnStart: 2.0 + k * 0.3, // middle-lane enemies per second at the start (gentle: time to grow the troop)
-    spawnEnd: 9.5 + k * 0.8, // ... and just before the boss (ramps up faster towards the end)
+    spawnStart: 6 + k * 0.8, // middle-lane enemies per second at the start: a real horde from the first second
+    spawnEnd: 26 + k * 2, // ... and just before the boss: the column is full (ramps up faster towards the end)
     burstChance: 0.08,
-    burst: [25, 50], // size of a sudden rush
-    warriorShare: 0.12 + k * 0.02, // doubles by the end of the level
-    hpGrowth: 1.1 + k * 0.15, // enemy health multiplier added over the level (level 1: x1 -> x2.4)
-    minionHp: 2.5 + k * 0.3,
-    warriorHp: 11 + k * 1.5,
+    burst: [50, 110], // size of a sudden rush
+    warriorShare: 0.06 + k * 0.01, // doubles by the end of the level
+    hpGrowth: 1.6 + k * 0.2, // enemy health multiplier added over the level (level 1: x1 -> x2.6)
+    minionHp: 1 + k * 0.15, // skeletons are many and weak: one bolt each at the start
+    warriorHp: 7 + k,
     enemySpeed: 5.4 + k * 0.15, // world units per second (lane ~70 long: ~12 s to reach the troop)
     minionCost: 1, // soldiers lost when one reaches the troop
     warriorCost: 3,
-    squadSize: [5, 16], // skeleton squads in the side lanes (grows over the level)
+    squadSize: [15, 45], // skeleton squads in the side lanes (grows over the level)
     plus1Hp: 2.5 + k * 0.3,
     plus5Hp: 12 + k * 2,
     fortHp: 600 + k * 150, // wall guarding a +99 block
     plus99Hp: 70 + k * 10,
-    weaponWallHp: 120 + k * 50, // wall guarding a weapon chest
-    weaponHp: 50 + k * 10,
+    weaponHp: 110 + k * 25, // "VÅBEN +" chest (one tier)
     rapidHp: 30, rapidTime: 10,
     bombHp: 35, bombRadius: 9, bombDamage: 40 + k * 10,
-    bossHp: 9000 + k * 2000,
+    bigWeaponWallHp: 450 + k * 120, // "VÅBEN ++": two weapon tiers at once, well guarded
+    bigWeaponHp: 160 + k * 30,
+    prisonHp: 320 + k * 70, // stone prison holding a hero
+    maxHeroes: 3,
+    heroDamage: 14 + k * 3, // fireball damage (x weapon multiplier) to everything in heroRadius
+    heroRadius: 2.6,
+    heroRange: 36,
+    bossHp: 14000 + k * 3000,
     bossSpeed: 2.8,
     bossKillsPerSwing: 6 + k,
     bossEscortRate: 3 + k * 0.3, // enemies per second while the boss walks
