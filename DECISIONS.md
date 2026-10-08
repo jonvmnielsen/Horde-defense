@@ -29,3 +29,6 @@
 | 2026-10-08 | Gennemboring af overskydende skade | Svage skeletter i tusindvis gjorde våbenopgraderinger værdiløse; nu tæller både antal og våben. |
 | 2026-10-08 | Instruktør der skalerer skeletternes liv efter truppens ildkraft | Belønningerne gav en lavine, så horden ikke længere pressede. Nu er der altid tryk på; trykket stiger gennem banen. |
 | 2026-10-08 | Sidesporene fyldes uden pauser og er fulde fra start | Jon: der skal hele tiden være noget på vej i alle kolonner. |
+| 2026-10-08 | Instruktøren (skalering efter spillerens styrke) er fjernet | Jon: med mange soldater og gode våben blev det umuligt. Belønninger skal kunne mærkes. |
+| 2026-10-08 | Faste fjendetyper + hændelser giver presset | Jon: normal horde med fast styrke, plus stærkere specielle fjender, bosser og fjendtlige helte. |
+| 2026-10-08 | Belønningsbudget pr. bane | Uden loft gav fæstninger og våbenkister en lavine; budgettet gør valgene vigtige. |

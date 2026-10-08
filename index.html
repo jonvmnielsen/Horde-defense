@@ -43,9 +43,10 @@
   .floater.orange { color: #ffc28a; -webkit-text-stroke-color: #6a2200; }
   .floater.red { color: #ff6a55; -webkit-text-stroke-color: #5a0d06; font-size: 22px; }
   .floater.red.big { font-size: 36px; }
-  #banner { position: absolute; top: 34%; left: 0; right: 0; text-align: center; font-size: 64px; color: var(--red); -webkit-text-stroke: 7px #3a0603; paint-order: stroke fill; opacity: 0; transform: scale(0.6); }
+  #banner { position: absolute; top: 34%; left: 0; right: 0; text-align: center; font-size: min(64px, 14vw); color: var(--red); -webkit-text-stroke: 7px #3a0603; paint-order: stroke fill; opacity: 0; transform: scale(0.6); }
   #banner.show { animation: banner 1.8s ease-out forwards; }
   #banner.blue { color: #fff; -webkit-text-stroke-color: var(--blue-dark); }
+  #banner.purple { color: #e3c2ff; -webkit-text-stroke-color: #3b0a7a; font-size: 34px; }
   #progress { position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 48px); left: 50%; transform: translateX(-50%); width: min(80vw, 400px); display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px; }
   #progress .lvl { font-size: 16px; letter-spacing: 1px; text-shadow: 0 2px 0 rgba(0,0,0,0.5); white-space: nowrap; }
   #progress .track { position: relative; height: 16px; border-radius: 9px; background: rgba(10, 16, 28, 0.6); border: 2px solid rgba(255,255,255,0.9); }

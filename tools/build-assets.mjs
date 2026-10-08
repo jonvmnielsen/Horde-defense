@@ -25,6 +25,9 @@ const characters = [
     anims: ['Running_A', 'Walking_D_Skeletons', 'Death_C_Skeletons'], drop: [] },
   { src: `${SK}/Skeleton_Warrior.glb`, out: 'skeleton_warrior_lod.glb', simplify: 0.3,
     anims: ['Running_A', 'Walking_D_Skeletons', 'Death_C_Skeletons'], drop: [] },
+  // enemy hero: the skeleton mage that stops in the lane and blasts the troop from range
+  { src: `${SK}/Skeleton_Mage.glb`, out: 'skeleton_mage.glb',
+    anims: ['Walking_D_Skeletons', 'Spellcast_Shoot', 'Death_C_Skeletons', 'Idle'], drop: [] },
   // hero: the mage freed from the stone prison
   { src: `${AD}/Mage.glb`, out: 'mage.glb',
     anims: ['Spellcast_Shoot', 'Idle', 'Running_A', 'Cheer', 'Death_A'],

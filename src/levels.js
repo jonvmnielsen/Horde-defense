@@ -1,5 +1,5 @@
 // Level tuning. Every number that decides difficulty lives here so balancing is one place.
-// Checked with tools/sim.py (bots): staying in one lane loses; you have to grow the troop AND upgrade weapons.
+// Checked with tools/sim.py (bots): staying in one lane loses; a troop that grows and upgrades must always be able to win.
 // Damage unit: one soldier fires one bolt per crossbow animation loop (~1.07 s) for 1 damage x weapon multiplier.
 
 export const TROOP = {
@@ -27,30 +27,49 @@ export const EVENTS = {
   gap: [0.1, 0.5], // seconds between events: the side lanes are never empty
 };
 
+// Enemy types. Their strength is FIXED: they never scale with the player. Pressure comes from numbers and from special types.
+// hp is multiplied by the level's hpScale (a little more each level). cost = soldiers lost when one reaches the troop.
+export const ENEMY = {
+  minion: { hp: 1, cost: 1, gold: 1, scale: 1 }, // the endless mass
+  warrior: { hp: 14, cost: 3, gold: 3, scale: 1 }, // armoured skeletons mixed into the mass
+  brute: { hp: 45, cost: 6, gold: 6, scale: 1.3 }, // Kæmpe: a big armoured skeleton, more of them late in the level
+  elite: { hp: 160, cost: 12, gold: 25, troops: 10, scale: 1.55 }, // Guldkriger: big, golden, pays +10 soldiers
+};
+
 export function levelConfig(n) {
   const k = n - 1; // 0 for the first level
   return {
     n,
     duration: 80 + k * 10, // seconds of horde before the boss arrives (this is the progress bar)
+    hpScale: 1 + k * 0.35, // every enemy type is a bit tougher on each new level (never during a level)
     // the middle horde is one packed mass that fills the lane from end to end
-    hordeSpeed: [2.7 + k * 0.1, 3.9 + k * 0.15], // march speed at the start / end of the level (units per second)
-    hordeWidth: [2.6 + k * 0.4, 8], // enemies per row across the 6-wide lane, start / end
+    hordeSpeed: [2.7 + k * 0.1, 4.2 + k * 0.15], // march speed at the start / end of the level (units per second)
+    hordeWidth: [3 + k * 0.4, 8], // enemies per row across the 6-wide lane, start / end
     hordeWave: 0.3, // rows swell and thin in waves (+/- 30 %)
     rowGap: 0.8, // distance between rows
     hordeStartZ: -30, // the mass already fills the lane from here back when the level starts
     bossEscortWidth: 2.5,
-    warriorShare: 0.06 + k * 0.01, // doubles by the end of the level
-    hpGrowth: 3 + k * 0.5, // enemy health grows with progress squared (level 1: x1 -> x1.75 halfway -> x4 at the boss)
-    director: { share: [0.9, 1.6], trim: [0.4, 3], target: 12, band: 3, rise: 0.08, fall: 0.25, lag: 5, grace: 12 }, // see updateDirector() in main.js
-    minionHp: 1 + k * 0.15, // skeletons are many and weak: one bolt each at the start
-    warriorHp: 7 + k,
-    minionCost: 1, // soldiers lost when one reaches the troop
-    warriorCost: 3,
-    squadSize: [18, 48], // skeleton squads in the side lanes (grows over the level)
+    warriorShare: [0.04, 0.4 + k * 0.03], // share of armoured warriors in the mass, start / end of the level
+    bruteShare: [0, 0.2 + k * 0.03], // share of Kæmper (from 30 % of the level)
+    eliteEvery: 6 - Math.min(3, k * 0.7), // seconds between Guldkrigere
+    rush: { time: 4, speed: 1.8 }, // STORMLØB: a full-width block that sprints
+    caster: { hp: 500 + k * 150, stopAt: 24, interval: 1.6, kills: 8 + k, gold: 60, troops: 25 },
+    // scripted events (at = share of the level): rushes and Skeletmagikere in a side lane
+    timeline: [
+      { at: 0.2, type: 'rush' },
+      { at: 0.35, type: 'caster' },
+      { at: 0.5, type: 'rush' },
+      { at: 0.68, type: 'caster' },
+      { at: 0.8, type: 'rush' },
+      ...(k >= 1 ? [{ at: 0.9, type: 'caster' }] : []),
+    ],
+    squadSize: [18, 40], // skeleton squads in the side lanes (grows over the level)
     plus1Hp: 2.5 + k * 0.3,
     plus5Hp: 12 + k * 2,
-    fortHp: 1500 + k * 300, // wall guarding a +99 block
-    plus99Hp: 180 + k * 30,
+    fortHp: 2200 + k * 400, // wall guarding a +99 block
+    // reward budget per level: once spent, the side lanes deal squads, +1 rows, bombs and rapid fire instead
+    budget: { fort: 2, weapon: 3, weapon2: 1, prisoner: 2 },
+    plus99Hp: 150 + k * 30,
     weaponHp: 70 + k * 20, // "VÅBEN +" chest (one tier)
     rapidHp: 30, rapidTime: 10,
     bombHp: 35, bombRadius: 9, bombDamage: 40 + k * 10,
@@ -61,10 +80,9 @@ export function levelConfig(n) {
     heroDamage: 14 + k * 3, // fireball damage (x weapon multiplier) to everything in heroRadius
     heroRadius: 2.6,
     heroRange: 36,
-    bossHp: 3000 + k * 1500,
-    bossSeconds: 15, // the boss takes about this many seconds of the troop's full fire
+    bossHp: 11000 + k * 7000, // fixed per level
     bossSpeed: 2.8,
     bossKillsPerSwing: 6 + k,
-    gold: { minion: 1, warrior: 3, boss: 60 + k * 30, clear: 100 + k * 50 },
+    gold: { boss: 60 + k * 30, clear: 100 + k * 50 },
   };
 }

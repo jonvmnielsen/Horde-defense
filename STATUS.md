@@ -3,14 +3,15 @@
 _Senest opdateret: 2026-10-07_
 
 ## Nu
-Runde 5 efter Jons fjerde test (8. okt): horden skal være én masse, og alle spor skal altid have noget på vej.
+Runde 6 efter Jons femte test (8. okt): instruktøren gjorde spillet umuligt; fjernet. Faste fjendetyper i stedet.
 
-- **Horde som masse:** midtersporet fyldes fra ende til anden af rækker (2,6 → 8 skeletter pr. række, 0,8 mellem rækkerne), der marcherer i samme tempo (2,7 → 3,9 enheder/s) med tykke og tynde bølger. Banen starter med sporet allerede fyldt.
-- **Gennemboring:** en bolt, der har skade tilbage efter et drab, fortsætter ind i op til 6 skeletter bag (så stor trup og gode våben mejer gennem massen).
-- **Instruktør (director):** nye skeletter (og dem der endnu ikke er inden for skudvidde) får liv efter truppens ildkraft, så massen altid står tæt på truppen. Trykket bygges op gennem banen; en ny belønning giver ~5 sekunders luft.
-- **Sidespor altid fyldt:** hændelser kommer i forlængelse af hinanden (0,1-0,5 s mellemrum), og sporene er fyldt fra start. Grupper marcherer i formation.
-- **Boss** dimensioneres efter truppen (~15 sekunders samlet ild).
-- **Bot-test:** smart spiller vinder 3 af 7 gange på bane 1; kun midten taber efter ~35 s.
+- **Grundregel:** fjendernes styrke skalerer ALDRIG med spilleren. En trup med mange soldater og gode våben skal altid kunne holde midten.
+- **Fjendetyper (fast liv, lidt mere pr. bane):** skelet (1 liv, massen), kriger (14, flere gennem banen), Kæmpe (45, større, fra 30 % af banen), Guldkriger (160, stor og gylden, giver +10 soldater).
+- **Hændelser:** STORMLØB (fuld bredde der spurter, 3 gange pr. bane), SKELETMAGIKER (fjendtlig helt der går ned ad et sidespor, stopper og skyder kugler mod truppen der dræber 8; giver +25 når den dør).
+- **Belønningsbudget pr. bane:** 2 fæstninger (+99), 3 × VÅBEN+, 1 × VÅBEN++, 2 fanger. Bagefter giver sidesporene grupper, +1, bomber og 2× skud.
+- **Boss:** fast liv (11.000 på bane 1).
+- **Helte** står ved truppens flanker (før foran, hvor de dækkede udsynet).
+- **Bot-test:** bane 1 vindes altid af aktive spillere (8/8), kun-midten taber efter ~28 s. Bane 2-3 vindes oftest; faren ligger i starten af banen.
 
 ## Udgivelse
 - Live på https://jonvmnielsen.github.io/Horde-defense/ (GitHub Pages, udgives automatisk ved push til `main`).

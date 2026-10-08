@@ -9,7 +9,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { bakeCharacter, createVatMaterial, Crowd, setVatTime } from './vat.js';
 import { buildWorld, makeSky, LANES, LANE_W, LANE_END_Z, EDGE } from './world.js';
 import { Particles, Bolts, Floaters, RADIAL } from './fx.js';
-import { levelConfig, TROOP, WEAPON, EVENTS } from './levels.js';
+import { levelConfig, TROOP, WEAPON, EVENTS, ENEMY } from './levels.js';
 
 const params = new URLSearchParams(location.search);
 const SNAP = params.has('snap'); // deterministic mode for screenshots
@@ -84,7 +84,7 @@ window.addEventListener('resize', resize);
 const loader = new GLTFLoader();
 const loadEl = document.getElementById('loading');
 let loaded = 0;
-const files = ['env.json', 'rogue.json', 'skeleton_minion_lod.json', 'skeleton_warrior.json', 'mage.json', 'skeleton_warrior_lod.json'];
+const files = ['env.json', 'rogue.json', 'skeleton_minion_lod.json', 'skeleton_warrior.json', 'mage.json', 'skeleton_warrior_lod.json', 'skeleton_mage.json'];
 function load(f) {
   return loader.loadAsync('assets/' + f).then((g) => {
     loaded++;
@@ -93,7 +93,7 @@ function load(f) {
     return g;
   });
 }
-const [envG, rogueG, minionG, warriorG, mageG, warriorLodG] = await Promise.all(files.map(load));
+const [envG, rogueG, minionG, warriorG, mageG, warriorLodG, skMageG] = await Promise.all(files.map(load));
 
 try { await Promise.race([document.fonts.load('80px "Lilita One"'), new Promise((r) => setTimeout(r, 1500))]); } catch (e) { /* fall back to system font */ }
 buildWorld(scene, envG);
@@ -119,11 +119,16 @@ const warriorLodBaked = bakeCharacter(warriorLodG, {
   clips: [{ name: 'Running_A', loop: true }, { name: 'Walking_D_Skeletons', loop: true }, { name: 'Death_C_Skeletons', loop: false }],
   part: (name) => (/Eyes/.test(name) ? { tint: [1.0, 0.15, 0.05], emissive: 6, useMap: false } : {}),
 });
+const skMageBaked = bakeCharacter(skMageG, {
+  height: 1.4,
+  clips: [{ name: 'Walking_D_Skeletons', loop: true }, { name: 'Spellcast_Shoot', loop: true }, { name: 'Death_C_Skeletons', loop: false }],
+  part: (name) => (/Eyes/.test(name) ? { tint: [0.7, 0.2, 1.0], emissive: 7, useMap: false } : {}),
+});
 const mageBaked = bakeCharacter(mageG, {
   height: 1.55,
   clips: [{ name: 'Spellcast_Shoot', loop: true }, { name: 'Idle', loop: true }, { name: 'Running_A', loop: true }, { name: 'Cheer', loop: true }],
 });
-for (const b of [rogueBaked, minionBaked, warriorBaked, warriorLodBaked, mageBaked]) if (b.map) b.map.anisotropy = MAX_ANISO;
+for (const b of [rogueBaked, minionBaked, warriorBaked, warriorLodBaked, mageBaked, skMageBaked]) if (b.map) b.map.anisotropy = MAX_ANISO;
 
 // team colours: soldiers green cloth -> royal blue; skeleton cloaks (blue/purple) -> blood red
 const blueMat = createVatMaterial(rogueBaked, { recolor: [0.22, 0.55, 0.61, 1.25], key: 'blue', roughness: 0.6 });
@@ -135,6 +140,11 @@ const minions = new Crowd(minionBaked, 1600, redMinionMat);
 const warriors = new Crowd(warriorLodBaked, 260, redWarriorMat);
 // the horde is huge: only contact shadows for skeletons, real shadows for the troop, heroes and the boss
 minions.mesh.castShadow = false; warriors.mesh.castShadow = false;
+// Guldkriger: a big golden warrior in the horde; tough, and pays out soldiers when killed
+const elites = new Crowd(warriorLodBaked, 40, createVatMaterial(warriorLodBaked, { recolor: [0.5, 0.99, 0.13, 1.6], tint: [1.6, 1.25, 0.45], key: 'elite', roughness: 0.3, metalness: 0.45 }));
+// Skeletmagiker: an enemy hero that stops in a side lane and blasts the troop from range
+const casters = new Crowd(skMageBaked, 6, createVatMaterial(skMageBaked, { recolor: [0.5, 0.99, 0.78, 1.5], key: 'caster' }));
+scene.add(elites.mesh, casters.mesh);
 const heroes = new Crowd(mageBaked, 6, createVatMaterial(mageBaked, { key: 'mage', roughness: 0.55 }));
 // a mage frozen in stone: same model, desaturated to grey rock
 const statues = new Crowd(mageBaked, 6, createVatMaterial(mageBaked, { recolor: [0.0, 1.0, 0.1, 0.0], tint: [0.62, 0.6, 0.58], key: 'stone', roughness: 0.95 }));
@@ -289,6 +299,7 @@ function clearEntities() {
   for (const s of S?.troop || []) soldiers.release(s.i);
   for (const e of S?.enemies || []) e.crowd.release(e.i);
   if (S?.boss) bosses.release(S.boss.i);
+  for (const c of S?.casterList || []) casters.release(c.i);
   for (const h of S?.heroList || []) heroes.release(h.i);
   for (const it of S?.items || []) if (it.statue !== undefined && it.statue >= 0) statues.release(it.statue);
   for (const w of S?.walls || []) { w.v.g.visible = false; wallPool.push(w.v); }
@@ -309,7 +320,7 @@ function startLevel(n, troopCount) {
     // a scripted opening (popped from the end) guarantees an early weapon chest and +5s, then the decks are random
     // scripted opening (popped from the end, nearest first): soldiers on both sides and an early weapon chest, then random decks
     side: [{ lane: LEFT, deck: ['squad', 'plus5', 'plus1', 'plus1'], next: 0 }, { lane: RIGHT, deck: ['plus5', 'plus1', 'weapon', 'plus1'], next: 0 }],
-    rowAcc: 0, hordeSpeed: 3, pressure: 1, trim: 1, front: 0,
+    spent: {}, orbs: [], rowAcc: 0, hordeSpeed: 3, rush: 0, nextElite: cfg.eliteEvery, timeline: cfg.timeline.map((ev) => ({ ...ev })), casterList: [],
   };
   const vis = Math.min(S.count, TROOP.visibleMax);
   for (let k = 0; k < vis; k++) spawnVisibleSoldier(S.cx + (Math.random() - 0.5) * 2, TROOP_Z + (Math.random() - 0.5) * 2, true);
@@ -345,7 +356,11 @@ function addWall(lane, z, hp) {
 function sideEvent(lane, deckState, z0 = SPAWN_Z) {
   const cfg = S.cfg;
   if (!deckState.deck.length) deckState.deck = shuffled(EVENTS.deck);
-  const ev = deckState.deck.pop();
+  let ev = deckState.deck.pop();
+  if (ev in cfg.budget) {
+    S.spent[ev] = (S.spent[ev] || 0) + 1;
+    if (S.spent[ev] > cfg.budget[ev]) ev = ['squad', 'plus1', 'squad', 'rapid', 'bomb'][Math.floor(Math.random() * 5)];
+  }
   S.stats.ev[ev] = (S.stats.ev[ev] || 0) + 1;
   const prog = Math.min(1, S.t / cfg.duration);
   switch (ev) {
@@ -417,45 +432,61 @@ function hordeWidth(p, z = 0) {
 }
 const ROW_MAX = 8;
 /** One row of enemies across a lane (fractional widths are dithered so density changes smoothly). */
-function spawnRow(lane, z, width) {
+function spawnRow(lane, z, width, fast = 1) {
   const n = Math.floor(width) + (Math.random() < width % 1 ? 1 : 0);
   const span = LANE_W - 1.0;
   const shift = Math.random(); // each row is offset differently so the rows never line up into stripes
   for (let c = 0; c < n; c++) {
     const f = ((((c + shift + (Math.random() - 0.5) * 0.7) / n) % 1) + 1) % 1; // 0..1 across the lane
     const x = LANES[lane] - span / 2 + span * f;
-    spawnEnemy(z + (Math.random() - 0.5) * S.cfg.rowGap * 0.8, { lane, x });
+    spawnEnemy(z + (Math.random() - 0.5) * S.cfg.rowGap * 0.8, { lane, x, fast });
   }
 }
 
 function spawnEnemy(z, opts = {}) {
   const cfg = S.cfg;
   const prog = Math.min(1, S.t / cfg.duration);
-  const warrior = opts.warrior ?? Math.random() < cfg.warriorShare * (1 + prog);
-  const crowd = warrior ? warriors : minions;
+  let type = opts.type;
+  if (!type) {
+    const r = Math.random();
+    const bru = Math.max(0, (prog - 0.3) / 0.7) * cfg.bruteShare[1];
+    const war = cfg.warriorShare[0] + (cfg.warriorShare[1] - cfg.warriorShare[0]) * prog;
+    type = r < bru ? 'brute' : r < bru + war ? 'warrior' : 'minion';
+  }
+  const T = ENEMY[type];
+  const crowd = type === 'elite' ? elites : type === 'minion' ? minions : warriors;
   const i = crowd.alloc();
   if (i < 0) return;
   const lane = opts.lane ?? MID;
-  const walk = !warrior && Math.random() < 0.2;
+  const fast = opts.fast || 1;
   const e = {
-    crowd, i, lane, x: opts.x ?? LANES[lane] + (Math.random() - 0.5) * (LANE_W - 1.2), z,
-    baseHp: (warrior ? cfg.warriorHp : cfg.minionHp) * (1 + cfg.hpGrowth * prog * prog), hp: 0, pending: 0,
-    speed: S.hordeSpeed * (0.97 + Math.random() * 0.06), // one pace for everyone, so the mass stays packed
-    state: 'run', t: 0, flash: 0, warrior, y: 0,
+    crowd, i, lane, type, x: opts.x ?? LANES[lane] + (Math.random() - 0.5) * (LANE_W - 1.2), z,
+    hp: T.hp * cfg.hpScale, pending: 0, scale: T.scale, warrior: type !== 'minion',
+    speed: S.hordeSpeed * fast * (0.97 + Math.random() * 0.06), // one pace for everyone, so the mass stays packed
+    state: 'run', t: 0, flash: 0, y: 0,
   };
-  e.hp = e.baseHp * (lane === MID ? S.pressure : 1);
-  // a shambling mass: mostly the skeleton walk, some jog; playback matched to the march speed
-  const pace = S.hordeSpeed / 3;
-  crowd.play(i, walk || Math.random() < 0.65 ? 'Walking_D_Skeletons' : 'Running_A', clock, (0.95 + Math.random() * 0.2) * Math.max(0.7, pace) * (walk ? 1.2 : 1), Math.random() * 2);
+  // a shambling mass: mostly the skeleton walk; rushers sprint
+  const pace = S.hordeSpeed * fast / 3;
+  const run = fast > 1 || Math.random() < 0.35;
+  crowd.play(i, run ? 'Running_A' : 'Walking_D_Skeletons', clock, (0.95 + Math.random() * 0.2) * Math.max(0.7, run ? pace * 0.75 : pace), Math.random() * 2);
   S.enemies.push(e);
+}
+
+/** Skeletmagiker: walks down a side lane, stops in crossbow range and blasts the troop until it is killed. */
+function spawnCaster(lane) {
+  const i = casters.alloc();
+  if (i < 0) return;
+  const c = S.cfg.caster;
+  S.casterList.push({ caster: true, i, lane, x: LANES[lane], z: SPAWN_Z, hp: c.hp, max: c.hp, pending: 0, flash: 0, state: 'walk', t: 0, cast: 0, y: 0 });
+  casters.play(i, 'Walking_D_Skeletons', clock, 0.9);
+  showBanner('SKELETMAGIKER!', 'purple');
 }
 
 function spawnBoss() {
   const i = bosses.alloc();
   if (i < 0) return;
   const cfg = S.cfg;
-  // the boss is sized to the troop that meets it: base health plus ~bossSeconds of the troop's current firepower
-  const bossHp = cfg.bossHp + S.count * WEAPON[S.weapon].mul * TROOP.boltDamage / SHOOT_LEN * cfg.bossSeconds;
+  const bossHp = cfg.bossHp; // fixed: a strong troop beats it, a weak one does not
   S.boss = { i, x: LANES[MID], z: SPAWN_Z - 2, hp: bossHp, max: bossHp, pending: 0, speed: cfg.bossSpeed, state: 'walk', flash: 0, atk: 0, y: 0, t: 0 };
   bosses.play(i, 'Walking_D_Skeletons', clock, 0.95);
   showBanner('BOSS', 'red');
@@ -524,6 +555,7 @@ function buildTargets() {
   for (const it of S.items) if (it.alive) laneTargets[it.lane].push(it);
   for (const w of S.walls) if (w.alive) laneTargets[w.lane].push(w);
   if (S.boss && S.boss.state !== 'dead') laneTargets[laneOf(S.boss.x)].push(S.boss);
+  for (const c of S.casterList) if (c.state !== 'dead') laneTargets[c.lane].push(c);
   for (const L of laneTargets) L.sort((a, b) => b.z - a.z);
 }
 
@@ -543,6 +575,8 @@ function pickTarget(lane, fromZ) {
 function hitHeight(t) {
   if (t.wall) return 1.6;
   if (t === S.boss) return 2.6;
+  if (t.caster) return 1.6;
+  if (t.type === 'elite') return 1.4;
   if (t.kind) return 0.8;
   return t.warrior ? 0.95 : 0.85;
 }
@@ -577,6 +611,13 @@ function damage(t, dmg, hx, hy, hz) {
     t.hp -= dmg; t.flash = 0.08;
     sparks(hx, hy, hz + 0.5, 0.9, 0.8, 0.7, 2);
     if (t.hp <= 0) breakWall(t);
+    return;
+  }
+  if (t.caster) {
+    if (t.state === 'dead') return;
+    t.hp -= dmg; t.flash = 0.08;
+    sparks(hx, hy, hz + 0.3, 0.8, 0.4, 1.0, 2);
+    if (t.hp <= 0) killCaster(t);
     return;
   }
   if (t === S.boss) {
@@ -635,7 +676,15 @@ function burst(x, y, z, n, col, speed = 8, size = 0.35) {
 function killEnemy(e, reward) {
   e.state = 'dead'; e.t = 0;
   e.crowd.play(e.i, 'Death_C_Skeletons', clock, 1.15);
-  if (reward) { S.gold += e.warrior ? S.cfg.gold.warrior : S.cfg.gold.minion; S.kills++; }
+  if (reward) {
+    const T = ENEMY[e.type];
+    S.gold += T.gold; S.kills++;
+    if (T.troops) {
+      gainTroops(T.troops);
+      floaters.add('+' + T.troops, { x: e.x, y: 2.4, z: e.z }, 'gold big', 1.2, 2.6);
+      burst(e.x, 1.2, e.z, 40, [2.6, 2.0, 0.5], 9, 0.4);
+    }
+  }
   if (Math.random() < 0.5) puff(e.x, 0.3, e.z, 1, [0.55, 0.5, 0.46], 0.8);
 }
 
@@ -738,6 +787,56 @@ function killBoss() {
   S.gold += S.cfg.gold.clear;
 }
 
+function killCaster(c) {
+  c.state = 'dead'; c.t = 0;
+  casters.play(c.i, 'Death_C_Skeletons', clock, 1);
+  const r = S.cfg.caster;
+  S.gold += r.gold; gainTroops(r.troops);
+  floaters.add('+' + r.troops, { x: c.x, y: 3, z: c.z }, 'gold big', 1.5, 3);
+  burst(c.x, 1.5, c.z, 70, [1.8, 0.6, 3.0], 11, 0.45);
+  S.shake = Math.max(S.shake, 0.4);
+}
+
+function updateCasters(dt, playing) {
+  const cfg = S.cfg.caster;
+  for (const c of S.casterList) {
+    c.t += dt;
+    if (c.state === 'dead') {
+      if (c.t > 1.8) c.y -= dt * 1.2;
+      if (c.t > 2.8) c.remove = true;
+    } else if (c.state === 'walk') {
+      c.z += S.hordeSpeed * dt;
+      if (c.z >= TROOP_Z - cfg.stopAt) { c.state = 'cast'; c.cast = 0.6; casters.play(c.i, 'Spellcast_Shoot', clock, 0.9); }
+    } else if (playing) {
+      c.cast -= dt;
+      if (c.cast <= 0) {
+        c.cast = cfg.interval;
+        // a purple orb arcs over to the troop and takes soldiers with it
+        S.orbs.push({ x: c.x, y: 2.2, z: c.z + 0.5, t: 0, dur: 0.9, kills: cfg.kills });
+        glow.emit(c.x, 2.2, c.z + 0.5, 0, 0.5, 0, 1.8, 0.5, 3.2, 1.6, 0.2);
+      }
+    }
+    if (c.flash > 0) c.flash -= dt;
+    casters.flash(c.i, Math.max(0, c.flash) * 12);
+    casters.setTransform(c.i, c.x, c.y, c.z, 0, 1.7);
+    if (c.state !== 'dead') blob(c.x, c.z, 1.6);
+  }
+  S.casterList = S.casterList.filter((c) => { if (c.remove) { casters.release(c.i); return false; } return true; });
+  let w = 0;
+  for (const o of S.orbs) {
+    o.t += dt;
+    const k = Math.min(1, o.t / o.dur);
+    const x = o.x + (S.cx - o.x) * k, z = o.z + (TROOP_Z - o.z) * k, y = o.y + Math.sin(k * Math.PI) * 4 * (1 - k * 0.6);
+    glow.emit(x, y, z, 0, 0, 0, 1.8, 0.5, 3.4, 1.3, 0.12);
+    glow.emit(x, y, z - 0.3, (Math.random() - 0.5) * 1.5, 0.6, -1.5, 1.2, 0.3, 2.6, 0.6, 0.3);
+    if (k < 1) { S.orbs[w++] = o; continue; }
+    loseTroops(o.kills, S.cx, TROOP_Z);
+    for (let n = 0; n < 30; n++) glow.emit(S.cx, 0.8, TROOP_Z, (Math.random() - 0.5) * 8, 2 + Math.random() * 5, (Math.random() - 0.5) * 8, 1.8, 0.5, 3.2, 0.5, 0.5, 9);
+    S.shake = Math.max(S.shake, 0.25);
+  }
+  S.orbs.length = w;
+}
+
 function killSoldier(s) {
   if (s.state === 'dead') return;
   s.state = 'dead'; s.dying = 0;
@@ -817,8 +916,9 @@ function updateFireballs(dt) {
 function updateHeroes(dt, playing) {
   const n = S.heroList.length;
   S.heroList.forEach((h, j) => {
-    const hx = S.cx + (j - (n - 1) / 2) * 1.7;
-    const hz = TROOP_Z - troopRadius() * 0.7 - 1.3;
+    const side = j % 2 === 0 ? 1 : -1, row = Math.floor(j / 2);
+    const hx = THREE.MathUtils.clamp(S.cx + side * (troopRadius() + 0.9 + row * 0.9), -EDGE + 0.8, EDGE - 0.8); // stay on screen
+    const hz = TROOP_Z - 0.4 + row * 1.2;
     const dx = hx - h.x, dz = hz - h.z, d = Math.hypot(dx, dz);
     if (h.state === 'run') {
       const m = Math.min(d, 12 * dt);
@@ -832,38 +932,9 @@ function updateHeroes(dt, playing) {
         if (prev < CAST_RELEASE && ph >= CAST_RELEASE) castFireball(h);
       } else if (h.state !== 'cheer' && S.phase === 'won') { h.state = 'cheer'; heroes.play(h.i, 'Cheer', clock, 1, 0); }
     }
-    heroes.setTransform(h.i, h.x, 0, h.z, h.yaw, 1.4);
+    heroes.setTransform(h.i, h.x, 0, h.z, h.yaw, 1.1);
     blob(h.x, h.z, 1.1);
   });
-}
-
-// ---------------------------------------------------------------- director: keeps the mass pressing on the troop
-// Watches how close the front of the middle horde gets. If the troop holds it far away, new skeletons come in tougher;
-// if the front is on top of the troop, they ease off. A strong troop always meets a horde at its throat.
-function updateDirector(dt) {
-  const c = S.cfg, d = c.director;
-  const p = Math.min(1, S.t / c.duration);
-  const reach = TROOP_Z - TROOP.range;
-  let front = -1e9;
-  for (const e of S.enemies) if (e.state === 'run' && e.lane === MID && e.z > front) front = e.z;
-  S.front = front;
-  // feed-forward: what the troop can kill per second vs. how much health walks in per second at pressure 1
-  const fire = S.count * WEAPON[S.weapon].mul * TROOP.boltDamage * fireSpeed() / SHOOT_LEN;
-  const share = c.warriorShare * (1 + p);
-  const meanHp = (c.minionHp * (1 - share) + c.warriorHp * share) * (1 + c.hpGrowth * p * p);
-  const inflow = S.hordeSpeed / c.rowGap * hordeWidth(Math.pow(p, 1.3)) * meanHp;
-  // trim: a slow correction from where the front actually stands
-  const dist = TROOP_Z - front;
-  if (S.t > d.grace && dist > d.target + d.band) S.trim = Math.min(d.trim[1], S.trim * (1 + d.rise * dt));
-  else if (dist < d.target - d.band) S.trim = Math.max(d.trim[0], S.trim * (1 - d.fall * dt));
-  const want = Math.max(1, fire / inflow * (d.share[0] + (d.share[1] - d.share[0]) * p) * S.trim); // pressure builds over the level
-  // ease towards it: a new reward buys a few seconds of breathing room before the horde catches up
-  const before = S.pressure;
-  S.pressure += (want - S.pressure) * Math.min(1, dt / d.lag);
-  if (Math.abs(S.pressure - before) > 1e-3) {
-    // skeletons not yet in crossbow range are re-tuned at once
-    for (const e of S.enemies) if (e.state === 'run' && e.lane === MID && e.z < reach) e.hp = e.baseHp * S.pressure;
-  }
 }
 
 // ---------------------------------------------------------------- bots (balance testing only)
@@ -876,13 +947,15 @@ function botTarget(style) {
   const threat = [0, 0, 0], reward = [0, 0, 0], cost = [1, 1, 1];
   for (const e of S.enemies) if (e.state === 'run' && e.z > TROOP_Z - 22) threat[laneOf(e.x)] += e.hp * (e.z > LANE_END_Z - 4 ? 2 : 1);
   if (S.boss && S.boss.state !== 'dead' && S.boss.z > TROOP_Z - 30) threat[laneOf(S.boss.x)] += S.boss.hp;
-  for (const it of S.items) if (it.alive && it.z > TROOP_Z - TROOP.range) { reward[it.lane] += VALUE[it.kind]; cost[it.lane] += it.hp; }
+  for (const c of S.casterList) if (c.state === 'cast') threat[c.lane] += dps * 3;
+  for (const it of S.items) if (it.alive && it.z > TROOP_Z - TROOP.range) { reward[it.lane] += style === 'noweapon' && /weapon/.test(it.kind) ? 0 : VALUE[it.kind]; cost[it.lane] += it.hp; }
   for (const w of S.walls) if (w.alive && w.z > TROOP_Z - TROOP.range) cost[w.lane] += w.hp;
   const worst = threat.indexOf(Math.max(...threat));
-  if (threat[worst] > dps * 1.1) return LANES[worst];
+  // 'weak' = a cautious player who mostly defends and only grabs what is cheap
+  if (threat[worst] > dps * (style === 'weak' ? 0.4 : 1.1)) return LANES[worst];
   let bestL = worst, bestV = 0;
   for (const L of [LEFT, MID, RIGHT]) {
-    const v = reward[L] / (cost[L] / dps + 2);
+    const v = reward[L] / (cost[L] / dps + 2) / (style === 'weak' ? 1 + cost[L] / dps : 1);
     if (v > bestV) { bestV = v; bestL = L; }
   }
   if (bestV === 0) return LANES[worst];
@@ -918,10 +991,24 @@ function update(dt) {
   if (S.phase === 'horde') {
     const p = Math.min(1, S.t / cfg.duration);
     S.hordeSpeed = cfg.hordeSpeed[0] + (cfg.hordeSpeed[1] - cfg.hordeSpeed[0]) * p;
-    updateDirector(dt);
+    // scripted events of the level: rushes and enemy heroes
+    for (const ev of S.timeline) {
+      if (ev.done || p < ev.at) continue;
+      ev.done = true;
+      if (ev.type === 'rush') { S.rush = cfg.rush.time; showBanner('STORMLØB!', 'red'); }
+      if (ev.type === 'caster') spawnCaster(ev.lane ?? (Math.random() < 0.5 ? LEFT : RIGHT));
+    }
     // a new row enters every time the mass has advanced one row gap: the lane never empties behind it
     S.rowAcc += S.hordeSpeed * dt;
-    while (S.rowAcc >= cfg.rowGap) { S.rowAcc -= cfg.rowGap; spawnRow(MID, SPAWN_Z - S.rowAcc, hordeWidth(Math.pow(p, 1.3))); }
+    while (S.rowAcc >= cfg.rowGap) {
+      S.rowAcc -= cfg.rowGap;
+      if (S.rush > 0) spawnRow(MID, SPAWN_Z - S.rowAcc, ROW_MAX, cfg.rush.speed);
+      else spawnRow(MID, SPAWN_Z - S.rowAcc, hordeWidth(Math.pow(p, 1.3)));
+    }
+    if (S.rush > 0) S.rush -= dt;
+    // Guldkriger: one marches in the mass every few seconds
+    S.nextElite -= dt;
+    if (S.nextElite <= 0 && S.t > 8) { S.nextElite = cfg.eliteEvery * (0.7 + Math.random() * 0.6); spawnEnemy(SPAWN_Z, { type: 'elite' }); }
     if (S.t >= cfg.duration) { S.phase = 'boss'; spawnBoss(); }
   } else if (S.phase === 'boss') {
     S.rowAcc += S.hordeSpeed * dt;
@@ -993,7 +1080,7 @@ function update(dt) {
     if (e.state === 'dead') {
       if (e.t > 1.6) e.y -= dt * 1.2;
       if (e.t > 2.6) e.remove = true;
-      e.crowd.setTransform(e.i, e.x, e.y, e.z, 0, 1);
+      e.crowd.setTransform(e.i, e.x, e.y, e.z, 0, e.scale);
       if (e.flash > 0) { e.flash -= dt; e.crowd.flash(e.i, Math.max(0, e.flash) * 25); }
       continue;
     }
@@ -1005,15 +1092,15 @@ function update(dt) {
       e.x += THREE.MathUtils.clamp(ddx, -6 * dt, 6 * dt);
       yaw = Math.atan2(ddx, 3) * 0.6;
       if (e.z > front && Math.abs(e.x - S.cx) < troopRadius() + 0.6) {
-        loseTroops(e.warrior ? cfg.warriorCost : cfg.minionCost, e.x, e.z, false);
+        loseTroops(ENEMY[e.type].cost, e.x, e.z, ENEMY[e.type].cost > 3);
         killEnemy(e, false);
         continue;
       }
       if (e.z > TROOP_Z + 7) { e.state = 'dead'; e.remove = true; }
     }
     if (e.flash > 0) { e.flash -= dt; e.crowd.flash(e.i, Math.max(0, e.flash) * 25); }
-    e.crowd.setTransform(e.i, e.x, 0, e.z, yaw, 1);
-    if (e.z > -60) blob(e.x, e.z, 0.85);
+    e.crowd.setTransform(e.i, e.x, 0, e.z, yaw, e.scale);
+    if (e.z > -60) blob(e.x, e.z, 0.85 * e.scale);
   }
   if (S.enemies.some((e) => e.remove)) {
     S.enemies = S.enemies.filter((e) => { if (e.remove) { e.crowd.release(e.i); return false; } return true; });
@@ -1049,6 +1136,7 @@ function update(dt) {
 
   // ---- heroes and their fireballs
   updateHeroes(dt, playing);
+  updateCasters(dt, playing);
   updateFireballs(dt);
 
   // ---- pickups and walls ride the conveyor; walls hold back whatever is behind them in their lane
@@ -1061,7 +1149,7 @@ function update(dt) {
     if (S.endT >= 1.6 && S.endT - dt < 1.6 && !S.bot) showEnd();
   }
 
-  soldiers.commit(); minions.commit(); warriors.commit(); bosses.commit(); heroes.commit(); statues.commit();
+  soldiers.commit(); minions.commit(); warriors.commit(); bosses.commit(); heroes.commit(); statues.commit(); elites.commit(); casters.commit();
   blobs.count = blobN;
   blobs.instanceMatrix.needsUpdate = true;
   glow.update(dt); dust.update(dt); bolts.update(dt);
@@ -1200,7 +1288,7 @@ if (!SNAP) requestAnimationFrame(frame);
 // test hooks: screenshots and balance simulation
 window.__game = {
   get S() { return S; },
-  step: (n) => { for (let i = 0; i < n; i++) { update(1 / 30); floaters.update(1 / 30, window.innerWidth, window.innerHeight); } updateCamera(1 / 30); composer.render(); return { count: S.count, visible: visibleAlive, phase: S.phase, weapon: S.weapon, enemies: S.enemies.length, pressure: +S.pressure.toFixed(1) }; },
+  step: (n) => { for (let i = 0; i < n; i++) { update(1 / 30); floaters.update(1 / 30, window.innerWidth, window.innerHeight); } updateCamera(1 / 30); composer.render(); return { count: S.count, visible: visibleAlive, phase: S.phase, weapon: S.weapon, enemies: S.enemies.length }; },
   // run a whole level with a bot at 30 steps/s without rendering; returns the outcome
   sim: (bot, level = 1, troop = TROOP.start, maxSeconds = 400) => {
     S.bot = bot;
@@ -1212,7 +1300,7 @@ window.__game = {
       update(1 / 30);
       peak = Math.max(peak, S.count);
       S.stats.lane[laneOf(S.cx)]++;
-      if (i % 300 === 0) trace.push(`${Math.round(S.t)}s:${S.count}/w${S.weapon}/p${S.pressure.toFixed(1)}/t${S.trim.toFixed(2)}/f${Math.round(TROOP_Z - S.front)}`);
+      if (i % 300 === 0) trace.push(`${Math.round(S.t)}s:${S.count}/w${S.weapon}/h${S.heroList.length}/c${S.casterList.filter((c) => c.state !== "dead").length}/f${Math.round(TROOP_Z - S.enemies.reduce((m, e) => e.state === "run" && e.lane === MID ? Math.max(m, e.z) : m, -99))}`);
     }
     const out = { bot, level, result: S.phase, t: Math.round(S.t), troop: S.count, peak, weapon: S.weapon, kills: S.kills, ev: S.stats.ev, pop: S.stats.pop, lane: S.stats.lane.map((v) => Math.round(v / 30)), boss: S.boss ? Math.max(0, Math.round(S.boss.hp)) : null, trace: trace.join(' ') };
     S.bot = null;

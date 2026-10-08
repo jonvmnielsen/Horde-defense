@@ -27,7 +27,9 @@ Ved indlæsning afspilles hver valgt animation på CPU'en, og hver vertex' posit
 - `tools/sim.py` bruger `botTarget()`: forsvar sporet med størst trussel, ellers det spor med bedst belønning pr. liv.
 - Animerede figurer kaster skygger via `createVatDepthMaterial` (samme VAT-opslag i dybde-pass).
 
-## Horden og instruktøren
-- `spawnRow()` lægger en række skeletter på tværs af et spor; `hordeWidth()` giver antal pr. række (vokser over banen, med bølger). En ny række kommer, hver gang massen har flyttet sig `rowGap`.
+## Horden og fjendetyper
+- `spawnRow()` lægger en række skeletter på tværs af et spor; `hordeWidth()` giver antal pr. række (vokser over banen, med bølger).
+- `ENEMY` i levels.js: fast liv, pris (soldater tabt) og guld pr. type. `spawnEnemy()` vælger type efter banens fremskridt.
 - `pierce()` sender overskydende skade videre til de nærmeste skeletter bag målet.
-- `updateDirector()` beregner truppens ildkraft og den indkommende mængde liv og sætter `S.pressure` (liv-multiplikator for midtersporet). `S.trim` finjusterer ud fra hvor fronten står. Skeletter uden for skudvidde justeres med det samme.
+- Banens `timeline`: stormløb (`S.rush`) og skeletmagikere (`spawnCaster`, `updateCasters`, kugler i `S.orbs`).
+- `budget` i levels.js begrænser fæstninger, våbenkister og fanger pr. bane (`S.spent`).
