@@ -72,8 +72,8 @@ function resize() {
   bloom.resolution.set(w * pixelRatio / 2, h * pixelRatio / 2);
   camera.aspect = w / h;
   // keep the three lanes (plus a margin) visible across the troop's row, whatever the screen shape
-  const d = camBase.distanceTo(new THREE.Vector3(0, 0, TROOP_Z));
-  const hfov = 2 * Math.atan((EDGE + 0.5) / d);
+  const d = camBase.distanceTo(new THREE.Vector3(0, 0, TROOP_Z - 9));
+  const hfov = 2 * Math.atan((EDGE + 0.3) / d);
   const vfov = 2 * Math.atan(Math.tan(hfov / 2) / camera.aspect) * 180 / Math.PI;
   camera.fov = THREE.MathUtils.clamp(vfov, 40, 84);
   camera.updateProjectionMatrix();
@@ -195,13 +195,14 @@ function labelTexture(text, bg, fg = '#fff') {
   return t;
 }
 const KIND_STYLE = {
-  plus1: { label: '+1', color: 0x2f7cf6, emissive: 0x0a3cff, stroke: '#0b2f8a', w: LANE_W - 1.4, h: 1.0 },
-  plus5: { label: '+5', color: 0x1d5fe8, emissive: 0x0a3cff, stroke: '#0b2f8a', w: LANE_W - 1.4, h: 1.4 },
-  plus99: { label: '+99', color: 0xf2a812, emissive: 0xb85a00, stroke: '#7a3a00', w: LANE_W - 1.4, h: 1.5 },
-  weapon: { label: 'VÅBEN +', color: 0x9b3df5, emissive: 0x5a12c9, stroke: '#3b0a7a', w: LANE_W - 2.2, h: 1.8 },
-  weapon2: { label: 'VÅBEN ++', color: 0xd4a017, emissive: 0x8a3cff, stroke: '#3b0a7a', w: LANE_W - 1.6, h: 2.0 },
-  rapid: { label: '2× SKUD', color: 0xff7a1a, emissive: 0xc43c00, stroke: '#6a2200', w: LANE_W - 2.2, h: 1.5 },
-  bomb: { label: 'BOMBE', color: 0xe0322b, emissive: 0x9a0c06, stroke: '#4a0503', w: LANE_W - 2.2, h: 1.5 },
+  plus1: { label: '+1', color: 0x2f7cf6, emissive: 0x0a3cff, stroke: '#0b2f8a', w: 4.6, h: 1.0 },
+  plus5: { label: '+5', color: 0x1d5fe8, emissive: 0x0a3cff, stroke: '#0b2f8a', w: 4.6, h: 1.4 },
+  plus99: { label: '+99', color: 0xf2a812, emissive: 0xb85a00, stroke: '#7a3a00', w: 4.6, h: 1.5 },
+  weapon: { label: 'VÅBEN +', color: 0x9b3df5, emissive: 0x5a12c9, stroke: '#3b0a7a', w: 3.8, h: 1.8 },
+  weapon2: { label: 'VÅBEN ++', color: 0xd4a017, emissive: 0x8a3cff, stroke: '#3b0a7a', w: 4.4, h: 2.0 },
+  altar: { label: 'OFR', color: 0x7a0e14, emissive: 0x5a0008, stroke: '#2a0004', w: 4.2, h: 2.2 },
+  rapid: { label: '2× SKUD', color: 0xff7a1a, emissive: 0xc43c00, stroke: '#6a2200', w: 3.8, h: 1.5 },
+  bomb: { label: 'BOMBE', color: 0xe0322b, emissive: 0x9a0c06, stroke: '#4a0503', w: 3.8, h: 1.5 },
 };
 const kinds = {};
 for (const [name, st] of Object.entries(KIND_STYLE)) {
@@ -213,7 +214,7 @@ for (const [name, st] of Object.entries(KIND_STYLE)) {
   );
   body.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(max * 3).fill(1), 3);
   const lw = Math.min(st.w * 0.95, 4.2);
-  const label = new THREE.InstancedMesh(new THREE.PlaneGeometry(lw, lw * 0.375), new THREE.MeshBasicMaterial({ map: labelTexture(st.label, st.stroke), transparent: true, depthWrite: false }), max);
+  const label = new THREE.InstancedMesh(new THREE.PlaneGeometry(lw, lw * 0.375), new THREE.MeshBasicMaterial({ map: labelTexture(name === 'altar' ? 'OFR ' + Math.round(levelConfig(1).altar.share * 100) + '%' : st.label, st.stroke, name === 'altar' ? '#ffd0d0' : '#fff'), transparent: true, depthWrite: false }), max);
   body.castShadow = true;
   body.frustumCulled = label.frustumCulled = false;
   body.count = label.count = 0;
@@ -245,6 +246,39 @@ for (let i = 0; i < PRISON_CHUNKS; i++) {
   // the hat and face stay visible above the rock so you can see who is trapped inside
   CHUNK_LAYOUT.push({ x: Math.cos(a) * (r + 0.1), y: ring === 2 ? 0.95 : ring === 1 ? 0.55 : 0.08, z: Math.sin(a) * (r + 0.1) * 0.8, rot: a * 1.7, s: ring === 2 ? 2.8 : ring === 1 ? 3.2 : 3.6 });
 }
+
+// ---------------------------------------------------------------- hazards (they roll on into the camp and hit the troop unless it moves or shoots them)
+const envLib = {};
+envG.scene.traverse((o) => { if (o.parent === envG.scene) envLib[o.name] = o; });
+function hazardVisual(type) {
+  const g = new THREE.Group();
+  const inner = new THREE.Group();
+  if (type === 'barrel') {
+    const b = envLib.barrel_large.clone();
+    b.scale.setScalar(0.62);
+    // a red band so it reads as dangerous
+    b.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.color = new THREE.Color(1.15, 0.55, 0.45); o.castShadow = true; } });
+    // lying on its side (axis along x), centred on the inner group so it rolls about its own axis
+    b.rotation.set(0, 0, Math.PI / 2);
+    b.position.set(0.62, 0, 0);
+    inner.add(b);
+    inner.position.y = 0.56;
+  } else {
+    const r = envLib.rock_single_C.clone();
+    r.scale.set(9.5, 14, 9.5);
+    r.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.color = new THREE.Color(0.8, 0.76, 0.72); o.castShadow = true; } });
+    r.position.y = -1.1;
+    inner.add(r);
+    inner.position.y = 1.1;
+  }
+  g.add(inner);
+  const stripe = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0xff2a1a, transparent: true, opacity: 0, depthWrite: false }));
+  stripe.rotation.x = -Math.PI / 2;
+  stripe.renderOrder = 2;
+  scene.add(g, stripe);
+  return { g, inner, stripe };
+}
+const hazardPool = { barrel: [], boulder: [] };
 
 // ---------------------------------------------------------------- barricades (walls with health that shield what is behind them)
 const wallTemplate = new THREE.Group();
@@ -303,6 +337,7 @@ function clearEntities() {
   for (const h of S?.heroList || []) heroes.release(h.i);
   for (const it of S?.items || []) if (it.statue !== undefined && it.statue >= 0) statues.release(it.statue);
   for (const w of S?.walls || []) { w.v.g.visible = false; wallPool.push(w.v); }
+  for (const h of S?.hazards || []) releaseHazard(h);
   bolts.list.length = 0;
 }
 
@@ -320,7 +355,7 @@ function startLevel(n, troopCount) {
     // a scripted opening (popped from the end) guarantees an early weapon chest and +5s, then the decks are random
     // scripted opening (popped from the end, nearest first): soldiers on both sides and an early weapon chest, then random decks
     side: [{ lane: LEFT, deck: ['squad', 'plus5', 'plus1', 'plus1'], next: 0 }, { lane: RIGHT, deck: ['plus5', 'plus1', 'weapon', 'plus1'], next: 0 }],
-    spent: {}, orbs: [], rowAcc: 0, hordeSpeed: 3, rush: 0, nextElite: cfg.eliteEvery, timeline: cfg.timeline.map((ev) => ({ ...ev })), casterList: [],
+    hazards: [], nextHazard: 15, spent: {}, orbs: [], rowAcc: 0, hordeSpeed: 3, rush: 0, nextElite: cfg.eliteEvery, timeline: cfg.timeline.map((ev) => ({ ...ev })), casterList: [],
   };
   const vis = Math.min(S.count, TROOP.visibleMax);
   for (let k = 0; k < vis; k++) spawnVisibleSoldier(S.cx + (Math.random() - 0.5) * 2, TROOP_Z + (Math.random() - 0.5) * 2, true);
@@ -352,6 +387,90 @@ function addWall(lane, z, hp) {
   return w;
 }
 
+/** A squad of warriors marching in front of a big reward: you have to fight through them first. */
+function escort(lane, z, n) {
+  const rows = Math.ceil(n / 5);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < Math.min(5, n - r * 5); c++) spawnEnemy(z - r * 1.0, { lane, type: 'warrior', x: LANES[lane] - (LANE_W - 1.6) / 2 + (LANE_W - 1.6) * (c + 0.5) / 5 });
+  }
+}
+
+function addHazard(type, lane, z) {
+  const c = S.cfg.hazard[type];
+  const v = hazardPool[type].pop() || hazardVisual(type);
+  v.g.visible = true; v.stripe.visible = true;
+  const h = { hazard: type, lane, x: LANES[lane] + (Math.random() - 0.5) * (LANE_W - 3), z, hp: c.hp * S.cfg.hpScale, max: c.hp, pending: 0, flash: 0, alive: true, v, roll: 0, speed: c.speed, radius: c.radius };
+  S.hazards.push(h);
+  return h;
+}
+function releaseHazard(h) { h.v.g.visible = false; h.v.stripe.visible = false; hazardPool[h.hazard].push(h.v); }
+
+/** A barrel blows up: everything in the blast is hit, enemies and (if it reached the camp) soldiers. */
+function explodeBarrel(h, hitTroop) {
+  h.alive = false;
+  const c = S.cfg.hazard.barrel;
+  for (const e of S.enemies) {
+    if (e.state !== 'run') continue;
+    if ((e.x - h.x) ** 2 + (e.z - h.z) ** 2 < c.blast * c.blast) { e.hp -= c.damage; e.flash = 0.1; if (e.hp <= 0) killEnemy(e, true); }
+  }
+  if (hitTroop) loseTroops(c.kills, h.x, h.z);
+  for (let k = 0; k < 120; k++) {
+    const a = Math.random() * Math.PI * 2, r = Math.random() * c.blast * 0.7;
+    glow.emit(h.x + Math.cos(a) * r * 0.5, 0.5 + Math.random() * 2, h.z + Math.sin(a) * r * 0.5, Math.cos(a) * 8, 3 + Math.random() * 9, Math.sin(a) * 8, 3.0, 1.1 + Math.random() * 0.8, 0.2, 0.8 + Math.random() * 0.7, 0.5 + Math.random() * 0.4, 8);
+  }
+  for (let k = 0; k < 24; k++) puff(h.x + (Math.random() - 0.5) * 3, 0.3, h.z + (Math.random() - 0.5) * 3, 1, [0.3, 0.27, 0.25], 2.6);
+  floaters.add(hitTroop ? 'BUM!' : 'BUM!', { x: h.x, y: 2.5, z: h.z }, 'orange big', 0.9, 2);
+  S.shake = Math.max(S.shake, hitTroop ? 0.7 : 0.45);
+}
+
+function crumbleBoulder(h) {
+  h.alive = false;
+  for (let k = 0; k < 40; k++) dust.emit(h.x + (Math.random() - 0.5) * 2, 0.4 + Math.random() * 1.5, h.z, (Math.random() - 0.5) * 6, 1 + Math.random() * 4, (Math.random() - 0.5) * 6, 0.62, 0.6, 0.57, 1.6, 0.9, 6);
+  S.shake = Math.max(S.shake, 0.3);
+}
+
+const _redStripe = new THREE.Color(0xff2a1a);
+function updateHazards(dt, playing) {
+  const R = troopRadius();
+  if (playing && S.phase === 'horde') {
+    S.nextHazard -= dt;
+    if (S.nextHazard <= 0) {
+      const c = S.cfg.hazard;
+      S.nextHazard = c.every * (0.7 + Math.random() * 0.6);
+      const lane = Math.floor(Math.random() * 3);
+      addHazard(Math.random() < c.boulderShare ? 'boulder' : 'barrel', lane, SPAWN_Z);
+    }
+  }
+  for (const h of S.hazards) {
+    if (!h.alive) continue;
+    h.z += h.speed * dt;
+    // past the lanes it keeps rolling straight at its x: the troop must move out of the way (or shoot it)
+    const troopFront = TROOP_Z - R * 0.72, troopBack = TROOP_Z + R * 0.72;
+    if (!h.hit && h.z + h.radius > troopFront && h.z - h.radius < troopBack && Math.abs(h.x - S.cx) < R + h.radius * 0.8) {
+      h.hit = true;
+      if (h.hazard === 'barrel') { explodeBarrel(h, true); continue; }
+      loseTroops(S.cfg.hazard.boulder.kills, h.x, h.z);
+      S.shake = Math.max(S.shake, 0.6);
+      floaters.add('KNUST!', { x: h.x, y: 2.5, z: h.z }, 'red big', 0.9, 2);
+    }
+    if (h.z > TROOP_Z + 9) { h.alive = false; continue; }
+    h.roll += h.speed * dt / (h.hazard === 'barrel' ? 0.56 : 0.85);
+    if (h.flash > 0) h.flash -= dt;
+    h.v.g.position.set(h.x + (h.flash > 0 ? (Math.random() - 0.5) * 0.1 : 0), 0, h.z);
+    h.v.inner.rotation.x = h.roll;
+    if (h.hazard === 'barrel' && Math.random() < 0.5) glow.emit(h.x + 0.2, 1.3, h.z, (Math.random() - 0.5), 1.5, 0, 3, 1.6, 0.4, 0.35, 0.25); // fuse sparks
+    // danger stripe from the hazard to the troop row, brightening as it closes in
+    const near = THREE.MathUtils.clamp((h.z - (LANE_END_Z - 26)) / 26, 0, 1);
+    const len = Math.max(0.1, TROOP_Z + 2 - h.z);
+    h.v.stripe.scale.set(h.radius * 2.2, len, 1);
+    h.v.stripe.position.set(h.x, 0.14, h.z + len / 2);
+    h.v.stripe.material.opacity = near * (0.18 + 0.12 * Math.sin(clock * 12));
+    h.v.stripe.material.color.copy(_redStripe);
+    blob(h.x, h.z, h.radius * 1.6);
+  }
+  S.hazards = S.hazards.filter((h) => { if (!h.alive) { releaseHazard(h); return false; } return true; });
+}
+
 /** Run the next event in a side lane. Returns its length in lane units (so the next one starts after it). */
 function sideEvent(lane, deckState, z0 = SPAWN_Z) {
   const cfg = S.cfg;
@@ -367,9 +486,9 @@ function sideEvent(lane, deckState, z0 = SPAWN_Z) {
     case 'plus1': { const n = 8 + Math.floor(Math.random() * 7); for (let k = 0; k < n; k++) addItem('plus1', lane, z0 - k * 1.9, cfg.plus1Hp); return n * 1.9; }
     case 'plus5': { addItem('plus5', lane, z0, cfg.plus5Hp); addItem('plus5', lane, z0 - 3, cfg.plus5Hp); return 6; }
     case 'squad': { const n = Math.round(cfg.squadSize[0] + (cfg.squadSize[1] - cfg.squadSize[0]) * prog); const rows = Math.ceil(n / 6); for (let r = 0; r < rows; r++) spawnRow(lane, z0 - r * cfg.rowGap, Math.min(6, n - r * 6)); return rows * cfg.rowGap + 1; }
-    case 'fort': { addWall(lane, z0, cfg.fortHp); addItem('plus99', lane, z0 - 2.4, cfg.plus99Hp); return 6; }
+    case 'fort': { escort(lane, z0, cfg.escort); addWall(lane, z0 - 4, cfg.fortHp); addItem('plus99', lane, z0 - 6.4, cfg.plus99Hp); return 10; }
     case 'weapon': { if (S.weapon + S.items.filter((i) => i.alive && i.kind === 'weapon').length >= WEAPON.length - 1) return sideEvent(lane, deckState, z0); addItem('weapon', lane, z0, cfg.weaponHp); return 4; }
-    case 'weapon2': { if (S.weapon >= WEAPON.length - 2) return sideEvent(lane, deckState, z0); addWall(lane, z0, cfg.bigWeaponWallHp); addItem('weapon2', lane, z0 - 2.8, cfg.bigWeaponHp); return 7; }
+    case 'weapon2': { if (S.weapon >= WEAPON.length - 2) return sideEvent(lane, deckState, z0); escort(lane, z0, cfg.escort); addWall(lane, z0 - 4, cfg.bigWeaponWallHp); addItem('weapon2', lane, z0 - 6.8, cfg.bigWeaponHp); return 11; }
     case 'prisoner': {
       if (S.heroList.length + S.items.filter((i) => i.alive && i.kind === 'prisoner').length >= cfg.maxHeroes) return sideEvent(lane, deckState, z0);
       const st = statues.alloc();
@@ -378,6 +497,17 @@ function sideEvent(lane, deckState, z0 = SPAWN_Z) {
       addItem('prisoner', lane, z0, cfg.prisonHp, { statue: st, chunksLeft: PRISON_CHUNKS });
       return 5;
     }
+    case 'altar': {
+      // OFFERPORT: breaking it costs a share of the troop, and instantly hands over the big reward locked behind it
+      const reward = Math.random() < 0.5 && S.weapon < WEAPON.length - 2 ? 'weapon2' : S.heroList.length < cfg.maxHeroes ? 'prisoner' : 'weapon2';
+      const gate = addItem('altar', lane, z0, cfg.altar.hp, { reward });
+      if (reward === 'prisoner') {
+        const st = statues.alloc();
+        if (st >= 0) { statues.play(st, 'Idle', clock, 0.0001, Math.random()); addItem('prisoner', lane, z0 - 3, cfg.prisonHp, { statue: st, chunksLeft: PRISON_CHUNKS, lockedBy: gate }); }
+      } else addItem('weapon2', lane, z0 - 3, cfg.bigWeaponHp, { lockedBy: gate });
+      return 7;
+    }
+    case 'barrels': { for (let k = 0; k < 2; k++) addHazard('barrel', lane, z0 - k * 5); return 10; }
     case 'rapid': { addItem('rapid', lane, z0, cfg.rapidHp); return 4; }
     case 'bomb': { addItem('bomb', lane, z0, cfg.bombHp); return 4; }
     default: return 4;
@@ -403,6 +533,13 @@ function spawnVisibleSoldier(x, z, instant) {
   visibleAlive++;
   return true;
 }
+/** Where a shooting soldier is in its crossbow loop right now (0..1). */
+function shootPhase(s) {
+  const L = SHOOT_LEN / (s.sp * s.fs);
+  return (((clock - s.z0) / L) % 1 + 1) % 1;
+}
+/** Change fire speed without resetting anyone's rhythm: every soldier keeps its own phase, so fire stays continuous. */
+function retime(s) { if (s.state === 'shoot') playShoot(s, shootPhase(s)); }
 function playShoot(s, phase) {
   s.fs = fireSpeed();
   const sp = s.sp * s.fs;
@@ -430,7 +567,8 @@ function hordeWidth(p, z = 0) {
   const wave = 1 + c.hordeWave * Math.sin((S.t * c.hordeSpeed[0] - z) * 0.11);
   return Math.max(1, Math.min(ROW_MAX, base * wave));
 }
-const ROW_MAX = 8;
+const RUN_STRIDE = 3.0; // ground speed (units/s) that the running cycle covers at 1x playback
+const ROW_MAX = Math.round(LANE_W * 1.25); // enemies across a full row
 /** One row of enemies across a lane (fractional widths are dithered so density changes smoothly). */
 function spawnRow(lane, z, width, fast = 1) {
   const n = Math.floor(width) + (Math.random() < width % 1 ? 1 : 0);
@@ -465,10 +603,8 @@ function spawnEnemy(z, opts = {}) {
     speed: S.hordeSpeed * fast * (0.97 + Math.random() * 0.06), // one pace for everyone, so the mass stays packed
     state: 'run', t: 0, flash: 0, y: 0,
   };
-  // a shambling mass: mostly the skeleton walk; rushers sprint
-  const pace = S.hordeSpeed * fast / 3;
-  const run = fast > 1 || Math.random() < 0.35;
-  crowd.play(i, run ? 'Running_A' : 'Walking_D_Skeletons', clock, (0.95 + Math.random() * 0.2) * Math.max(0.7, run ? pace * 0.75 : pace), Math.random() * 2);
+  // they run: the running cycle plays at the rate that matches their ground speed (feet don't slide)
+  crowd.play(i, 'Running_A', clock, e.speed / RUN_STRIDE * (0.95 + Math.random() * 0.1), Math.random() * 2);
   S.enemies.push(e);
 }
 
@@ -494,7 +630,7 @@ function spawnBoss() {
 }
 
 // ---------------------------------------------------------------- input
-const XMAX = EDGE - 2.6; // troop centre stays inside the outer lanes, so the clump never leaves the screen
+const XMAX = EDGE - 2.4; // troop centre stays inside the outer lanes, so the clump never leaves the screen
 let dragging = false, lastX = 0;
 canvas.addEventListener('pointerdown', (e) => { dragging = true; lastX = e.clientX; canvas.setPointerCapture(e.pointerId); hideHint(); });
 canvas.addEventListener('pointermove', (e) => {
@@ -552,7 +688,8 @@ const _from = new THREE.Vector3(), _to = new THREE.Vector3();
 function buildTargets() {
   for (const L of laneTargets) L.length = 0;
   for (const e of S.enemies) if (e.state === 'run') laneTargets[laneOf(e.x)].push(e);
-  for (const it of S.items) if (it.alive) laneTargets[it.lane].push(it);
+  for (const it of S.items) if (it.alive && !(it.lockedBy && it.lockedBy.alive)) laneTargets[it.lane].push(it);
+  for (const h of S.hazards) if (h.alive) laneTargets[laneOf(h.x)].push(h);
   for (const w of S.walls) if (w.alive) laneTargets[w.lane].push(w);
   if (S.boss && S.boss.state !== 'dead') laneTargets[laneOf(S.boss.x)].push(S.boss);
   for (const c of S.casterList) if (c.state !== 'dead') laneTargets[c.lane].push(c);
@@ -576,6 +713,7 @@ function hitHeight(t) {
   if (t.wall) return 1.6;
   if (t === S.boss) return 2.6;
   if (t.caster) return 1.6;
+  if (t.hazard) return t.hazard === 'barrel' ? 0.6 : 1.0;
   if (t.type === 'elite') return 1.4;
   if (t.kind) return 0.8;
   return t.warrior ? 0.95 : 0.85;
@@ -611,6 +749,13 @@ function damage(t, dmg, hx, hy, hz) {
     t.hp -= dmg; t.flash = 0.08;
     sparks(hx, hy, hz + 0.5, 0.9, 0.8, 0.7, 2);
     if (t.hp <= 0) breakWall(t);
+    return;
+  }
+  if (t.hazard) {
+    if (!t.alive) return;
+    t.hp -= dmg; t.flash = 0.08;
+    sparks(hx, hy, hz + 0.4, 1.0, 0.8, 0.6, 2);
+    if (t.hp <= 0) { if (t.hazard === 'barrel') explodeBarrel(t, false); else crumbleBoulder(t); }
     return;
   }
   if (t.caster) {
@@ -675,6 +820,7 @@ function burst(x, y, z, n, col, speed = 8, size = 0.35) {
 
 function killEnemy(e, reward) {
   e.state = 'dead'; e.t = 0;
+  e.kb = 1.5 + Math.random() * 1.5; // knock-back speed
   e.crowd.play(e.i, 'Death_C_Skeletons', clock, 1.15);
   if (reward) {
     const T = ENEMY[e.type];
@@ -724,11 +870,19 @@ function popItem(it) {
       S.shake = Math.max(S.shake, 0.4);
       break;
     }
+    case 'altar': {
+      const cost = Math.max(S.cfg.altar.min, Math.round(S.count * S.cfg.altar.share));
+      loseTroops(Math.min(cost, S.count - 1), S.cx, TROOP_Z);
+      floaters.add('-' + cost + ' OFRET', p, 'red big', 1.4, 2.6);
+      burst(it.x, 1, it.z, 50, [2.4, 0.2, 0.2], 9, 0.4);
+      for (const o of S.items) if (o.lockedBy === it && o.alive) { if (o.kind === 'prisoner') o.hp = 0; popItem(o); }
+      break;
+    }
     case 'rapid': {
       S.rapid = S.cfg.rapidTime;
       floaters.add('2× SKUD!', p, 'orange big', 1.4, 3);
       burst(it.x, 0.8, it.z, 40, [3.0, 1.4, 0.3], 9, 0.4);
-      for (const s of S.troop) if (s.state === 'shoot') playShoot(s, RELEASE - 0.05);
+      for (const s of S.troop) retime(s);
       break;
     }
     case 'bomb': {
@@ -938,7 +1092,7 @@ function updateHeroes(dt, playing) {
 }
 
 // ---------------------------------------------------------------- bots (balance testing only)
-const VALUE = { plus1: 1, plus5: 5, plus99: 99, weapon: 400, weapon2: 900, prisoner: 700, rapid: 60, bomb: 40 };
+const VALUE = { plus1: 1, plus5: 5, plus99: 99, weapon: 400, weapon2: 900, prisoner: 700, rapid: 60, bomb: 40, altar: 500 };
 /** A greedy player: defends the lane with the most pressure, otherwise farms the lane with the best reward per health. */
 function botTarget(style) {
   if (style === 'middle') return LANES[MID];
@@ -950,7 +1104,12 @@ function botTarget(style) {
   for (const c of S.casterList) if (c.state === 'cast') threat[c.lane] += dps * 3;
   for (const it of S.items) if (it.alive && it.z > TROOP_Z - TROOP.range) { reward[it.lane] += style === 'noweapon' && /weapon/.test(it.kind) ? 0 : VALUE[it.kind]; cost[it.lane] += it.hp; }
   for (const w of S.walls) if (w.alive && w.z > TROOP_Z - TROOP.range) cost[w.lane] += w.hp;
-  const worst = threat.indexOf(Math.max(...threat));
+  // dodge: a hazard about to reach the camp in a lane makes that lane off-limits
+  const avoid = [false, false, false];
+  for (const h of S.hazards) if (h.alive && h.z > TROOP_Z - 16) avoid[laneOf(h.x)] = true;
+  const worst0 = threat.indexOf(Math.max(...threat));
+  const worst = avoid[worst0] ? [LEFT, MID, RIGHT].filter((L) => !avoid[L]).sort((a, b) => threat[b] - threat[a])[0] ?? worst0 : worst0;
+  for (const L of [LEFT, MID, RIGHT]) if (avoid[L]) reward[L] = 0;
   // 'weak' = a cautious player who mostly defends and only grabs what is cheap
   if (threat[worst] > dps * (style === 'weak' ? 0.4 : 1.1)) return LANES[worst];
   let bestL = worst, bestV = 0;
@@ -984,7 +1143,7 @@ function update(dt) {
   // rapid fire wears off
   if (S.rapid > 0) {
     S.rapid -= dt;
-    if (S.rapid <= 0) { S.rapid = 0; for (const s of S.troop) if (s.state === 'shoot') playShoot(s, RELEASE - 0.05); }
+    if (S.rapid <= 0) { S.rapid = 0; for (const s of S.troop) retime(s); }
   }
 
   // ---- spawns
@@ -1002,7 +1161,7 @@ function update(dt) {
     S.rowAcc += S.hordeSpeed * dt;
     while (S.rowAcc >= cfg.rowGap) {
       S.rowAcc -= cfg.rowGap;
-      if (S.rush > 0) spawnRow(MID, SPAWN_Z - S.rowAcc, ROW_MAX, cfg.rush.speed);
+      if (S.rush > 0) spawnRow(MID, SPAWN_Z - S.rowAcc, cfg.rush.width[0] + (cfg.rush.width[1] - cfg.rush.width[0]) * p, cfg.rush.speed);
       else spawnRow(MID, SPAWN_Z - S.rowAcc, hordeWidth(Math.pow(p, 1.3)));
     }
     if (S.rush > 0) S.rush -= dt;
@@ -1049,14 +1208,14 @@ function update(dt) {
       const m = Math.min(d, (s.state === 'run' ? 10 : 7) * dt * (d > 0.5 ? 1 : d / 0.5 + 0.3));
       s.x += dx / d * m; s.z += dz / d * m;
     }
-    if (s.state === 'run' && d < 0.35) { s.state = 'shoot'; playShoot(s, RELEASE - 0.04 - Math.random() * 0.2); }
+    if (s.state === 'run' && d < 0.35) { s.state = 'shoot'; playShoot(s, Math.random()); } // random phase: no volleys
     else if (s.state === 'shoot' && d > 1.2) { s.state = 'run'; soldiers.play(s.i, 'Running_A', clock, 1.2, Math.random()); }
     const wantYaw = s.state === 'run' && d > 0.6 ? Math.atan2(dx, dz) : Math.PI;
     let dy = wantYaw - s.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
     s.yaw += dy * Math.min(1, dt * 12);
 
     if (playing && s.state === 'shoot') {
-      if (s.fs !== fireSpeed()) playShoot(s, RELEASE - 0.05);
+      if (s.fs !== fireSpeed()) retime(s);
       // every soldier fires on every crossbow loop: at a target if one is in range, otherwise into the ground at max range
       const L = SHOOT_LEN / (s.sp * s.fs);
       const ph = (((clock - s.z0) / L) % 1 + 1) % 1;
@@ -1078,6 +1237,7 @@ function update(dt) {
   for (const e of S.enemies) {
     e.t += dt;
     if (e.state === 'dead') {
+      if (e.kb > 0) { e.z -= e.kb * dt; e.kb = Math.max(0, e.kb - dt * 6); }
       if (e.t > 1.6) e.y -= dt * 1.2;
       if (e.t > 2.6) e.remove = true;
       e.crowd.setTransform(e.i, e.x, e.y, e.z, 0, e.scale);
@@ -1137,6 +1297,7 @@ function update(dt) {
   // ---- heroes and their fireballs
   updateHeroes(dt, playing);
   updateCasters(dt, playing);
+  updateHazards(dt, playing);
   updateFireballs(dt);
 
   // ---- pickups and walls ride the conveyor; walls hold back whatever is behind them in their lane
@@ -1244,8 +1405,8 @@ function updateCamera(dt) {
   S.shake = Math.max(0, S.shake - dt * 1.6);
   const sh = S.shake * S.shake * 0.5;
   // the camera follows the troop sideways so it never slides off the edge of a narrow phone screen
-  camera.position.set(camBase.x + S.cx * 0.4 + (Math.random() - 0.5) * sh, camBase.y + (Math.random() - 0.5) * sh, camBase.z);
-  camera.lookAt(camTarget.x + S.cx * 0.3, camTarget.y, camTarget.z);
+  camera.position.set(camBase.x + S.cx * 0.55 + (Math.random() - 0.5) * sh, camBase.y + (Math.random() - 0.5) * sh, camBase.z);
+  camera.lookAt(camTarget.x + S.cx * 0.45, camTarget.y, camTarget.z);
   if (params.has('cam')) { const c = params.get('cam').split(',').map(Number); camera.position.set(c[0], c[1], c[2]); camera.lookAt(c[3], c[4], c[5]); }
   camera.updateMatrixWorld();
   troopLabelPos.set(S.cx, 1.9, TROOP_Z - troopRadius() * 0.7 - 0.9).project(camera);
@@ -1255,6 +1416,7 @@ function updateCamera(dt) {
 resize();
 startLevel(1, params.has('troop') ? +params.get('troop') : SNAP ? 60 : TROOP.start);
 if (params.has('bot')) S.bot = params.get('bot'); // screenshots of a bot-played game
+if (params.has('hz')) { addHazard(params.get('hz'), MID, -26); addHazard('barrel', LEFT, -34); }
 if (params.has('spawn')) { S.side[1].deck.push(params.get('spawn')); S.side[1].next = 0; } // force a side-lane event (tests)
 loadEl.classList.add('gone');
 

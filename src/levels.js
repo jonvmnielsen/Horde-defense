@@ -23,7 +23,7 @@ export const WEAPON = [
 
 // Side-lane events. Each side lane draws from its own shuffled copy of this deck, so left and right differ.
 export const EVENTS = {
-  deck: ['plus1', 'plus1', 'plus5', 'squad', 'squad', 'squad', 'fort', 'weapon', 'weapon', 'weapon2', 'prisoner', 'rapid', 'bomb'],
+  deck: ['plus1', 'plus1', 'plus5', 'squad', 'squad', 'squad', 'fort', 'weapon', 'weapon', 'weapon2', 'prisoner', 'altar', 'barrels', 'rapid', 'bomb'],
   gap: [0.1, 0.5], // seconds between events: the side lanes are never empty
 };
 
@@ -43,34 +43,38 @@ export function levelConfig(n) {
     duration: 80 + k * 10, // seconds of horde before the boss arrives (this is the progress bar)
     hpScale: 1 + k * 0.35, // every enemy type is a bit tougher on each new level (never during a level)
     // the middle horde is one packed mass that fills the lane from end to end
-    hordeSpeed: [2.7 + k * 0.1, 4.2 + k * 0.15], // march speed at the start / end of the level (units per second)
-    hordeWidth: [3 + k * 0.4, 8], // enemies per row across the 6-wide lane, start / end
+    hordeSpeed: [3.2 + k * 0.1, 5.2 + k * 0.15], // running speed at the start / end of the level (units per second)
+    hordeWidth: [2.4 + k * 0.5, 9], // enemies per row across the 7.5-wide lane, start / end
     hordeWave: 0.3, // rows swell and thin in waves (+/- 30 %)
-    rowGap: 0.8, // distance between rows
+    rowGap: 1.0, // distance between rows (they run, so rows are a little further apart)
     hordeStartZ: -30, // the mass already fills the lane from here back when the level starts
     bossEscortWidth: 2.5,
     warriorShare: [0.04, 0.4 + k * 0.03], // share of armoured warriors in the mass, start / end of the level
     bruteShare: [0, 0.2 + k * 0.03], // share of Kæmper (from 30 % of the level)
     eliteEvery: 6 - Math.min(3, k * 0.7), // seconds between Guldkrigere
-    rush: { time: 4, speed: 1.8 }, // STORMLØB: a full-width block that sprints
-    caster: { hp: 500 + k * 150, stopAt: 24, interval: 1.6, kills: 8 + k, gold: 60, troops: 25 },
+    rush: { time: 3.5, speed: 1.5, width: [5, 9] }, // STORMLØB: a wide block that sprints (narrower early in the level)
+    caster: { hp: 300 + k * 150, stopAt: 24, interval: 2.2 - Math.min(0.6, k * 0.2), kills: 5 + k * 2, gold: 60, troops: 25 },
     // scripted events (at = share of the level): rushes and Skeletmagikere in a side lane
     timeline: [
       { at: 0.2, type: 'rush' },
-      { at: 0.35, type: 'caster' },
+      { at: 0.42, type: 'caster' },
       { at: 0.5, type: 'rush' },
       { at: 0.68, type: 'caster' },
       { at: 0.8, type: 'rush' },
       ...(k >= 1 ? [{ at: 0.9, type: 'caster' }] : []),
     ],
+    escort: 10, // warriors marching in front of fortresses and VÅBEN ++
+    altar: { hp: 25, share: 0.3, min: 15 }, // OFFERPORT: costs 30 % of the troop (at least 15), hands over VÅBEN ++ or a hero
+    // rolling hazards: shoot them or get out of the way. Barrels blow up (also in the horde: good to shoot!), boulders crush.
+    hazard: { every: 9, boulderShare: 0.35, barrel: { hp: 6, speed: 6.5, radius: 0.7, kills: 14, blast: 4.5, damage: 30 }, boulder: { hp: 260, speed: 5, radius: 1.6, kills: 22 } },
     squadSize: [18, 40], // skeleton squads in the side lanes (grows over the level)
     plus1Hp: 2.5 + k * 0.3,
     plus5Hp: 12 + k * 2,
     fortHp: 2200 + k * 400, // wall guarding a +99 block
     // reward budget per level: once spent, the side lanes deal squads, +1 rows, bombs and rapid fire instead
-    budget: { fort: 2, weapon: 3, weapon2: 1, prisoner: 2 },
+    budget: { fort: 2, weapon: 3, weapon2: 1, prisoner: 1, altar: 2 },
     plus99Hp: 150 + k * 30,
-    weaponHp: 70 + k * 20, // "VÅBEN +" chest (one tier)
+    weaponHp: 45 + k * 20, // "VÅBEN +" chest (one tier)
     rapidHp: 30, rapidTime: 10,
     bombHp: 35, bombRadius: 9, bombDamage: 40 + k * 10,
     bigWeaponWallHp: 450 + k * 120, // "VÅBEN ++": two weapon tiers at once, well guarded

@@ -1,7 +1,7 @@
 // Static environment: lanes, courtyard, ruined graveyard surroundings, sky.
 import * as THREE from 'three';
 
-export const LANE_W = 6;
+export const LANE_W = 7.5;
 export const LANES = [-LANE_W, 0, LANE_W]; // lane centre x
 export const LANE_START_Z = -78; // far end
 export const LANE_END_Z = -9; // where lanes open into the courtyard
@@ -54,13 +54,12 @@ export function buildWorld(scene, envGltf) {
     }
   }
 
-  // ---- lane dividers: low barriers between lanes, walls on the outside ----
+  // ---- walls only on the outside; the lanes themselves are open, marked by a painted line in the paving ----
   for (let z = LANE_END_Z - 2; z > LANE_START_Z; z -= 4) {
     for (const x of [-EDGE, EDGE]) place('wall', x, 0, z, Math.PI / 2, 1, 0.55);
-    for (const x of [-LANE_W / 2, LANE_W / 2]) place('barrier', x, 0.05, z, Math.PI / 2, 1, 0.9);
   }
   // pillars and banners at the lane mouths
-  for (const x of [-EDGE, -LANE_W / 2, LANE_W / 2, EDGE]) place('pillar', x, 0, LANE_END_Z, 0, 0.6, 0.65);
+  for (const x of [-EDGE, EDGE]) place('pillar', x, 0, LANE_END_Z, 0, 0.6, 0.65);
   for (const x of [-EDGE, EDGE]) place('banner_patternA_red', x, 1.5, LANE_END_Z - 0.95, Math.PI, 0.75);
   // torches and banners along the outer walls, rubble and bones along the lane edges (detail at play distance)
   const torches = [];
@@ -146,6 +145,9 @@ export function buildWorld(scene, envGltf) {
     }
   }
 
+  // small stud stones along the lane lines give them texture
+  for (const x of [-LANE_W / 2, LANE_W / 2]) for (let z = LANE_END_Z - 1; z > LANE_START_Z; z -= 3) place('rock_single_A', x + (r() - 0.5) * 0.2, 0.05, z, r() * 6, 2.2);
+
   // ---- build instanced meshes ----
   const group = new THREE.Group();
   for (const [name, mats] of Object.entries(placements)) {
@@ -164,6 +166,17 @@ export function buildWorld(scene, envGltf) {
     }
   }
   scene.add(group);
+
+  // lane lines: a soft worn stripe in the paving where the old dividers were
+  const lineMat = new THREE.MeshBasicMaterial({ color: 0x3a2f26, transparent: true, opacity: 0.32, depthWrite: false });
+  const len = LANE_END_Z - LANE_START_Z + 6;
+  for (const x of [-LANE_W / 2, LANE_W / 2]) {
+    const line = new THREE.Mesh(new THREE.PlaneGeometry(0.22, len), lineMat);
+    line.rotation.x = -Math.PI / 2;
+    line.position.set(x, 0.12, (LANE_END_Z + LANE_START_Z - 6) / 2);
+    line.renderOrder = 1;
+    scene.add(line);
+  }
 
   // ---- ground plane under everything ----
   const groundTex = makeGroundTexture();

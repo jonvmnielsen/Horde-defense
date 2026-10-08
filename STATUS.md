@@ -3,15 +3,14 @@
 _Senest opdateret: 2026-10-07_
 
 ## Nu
-Runde 6 efter Jons femte test (8. okt): instruktøren gjorde spillet umuligt; fjernet. Faste fjendetyper i stedet.
+Runde 7 (8. okt): kontinuerlig ild, farer, bredere åbne spor, svære belønninger, løbende fjender.
 
-- **Grundregel:** fjendernes styrke skalerer ALDRIG med spilleren. En trup med mange soldater og gode våben skal altid kunne holde midten.
-- **Fjendetyper (fast liv, lidt mere pr. bane):** skelet (1 liv, massen), kriger (14, flere gennem banen), Kæmpe (45, større, fra 30 % af banen), Guldkriger (160, stor og gylden, giver +10 soldater).
-- **Hændelser:** STORMLØB (fuld bredde der spurter, 3 gange pr. bane), SKELETMAGIKER (fjendtlig helt der går ned ad et sidespor, stopper og skyder kugler mod truppen der dræber 8; giver +25 når den dør).
-- **Belønningsbudget pr. bane:** 2 fæstninger (+99), 3 × VÅBEN+, 1 × VÅBEN++, 2 fanger. Bagefter giver sidesporene grupper, +1, bomber og 2× skud.
-- **Boss:** fast liv (11.000 på bane 1).
-- **Helte** står ved truppens flanker (før foran, hvor de dækkede udsynet).
-- **Bot-test:** bane 1 vindes altid af aktive spillere (8/8), kun-midten taber efter ~28 s. Bane 2-3 vindes oftest; faren ligger i starten af banen.
+- **Ild:** skudhastighed (2× skud) skifter uden at nulstille soldaternes rytme, så der aldrig skydes i salver.
+- **Spor:** 7,5 brede (før 6), ingen mure mellem sporene; sporene markeres af en slidt stribe og små sten. Kameraet rammer sporene lidt længere fremme, så de ved truppen går ud over skærmkanten.
+- **Farer:** rullende krudttønder (6 liv; skydes de, eksploderer de og dræber fjender omkring; når de truppen, dræber de 14) og kampesten (260 liv; knuser 22 soldater). Begge ruller videre ind på pladsen; en rød stribe viser deres bane. Første fare efter 15 s, derefter ca. hver 9. s, plus "tønder" i sidesporene.
+- **Svære belønninger:** fæstninger (+99) og VÅBEN ++ har 10 krigere som eskorte foran muren. OFFERPORT: koster 30 % af truppen (mindst 15) og giver straks VÅBEN ++ eller en helt.
+- **Fjender løber:** løbecyklus med afspilning tilpasset farten (3,2 → 5,2 enheder/s), døde fjender kastes lidt bagud.
+- **Bot-test bane 1:** aktiv spiller vinder 7/8 (ender med 300-550), forsigtig spiller 2/2, kun-midten taber efter ~20 s.
 
 ## Udgivelse
 - Live på https://jonvmnielsen.github.io/Horde-defense/ (GitHub Pages, udgives automatisk ved push til `main`).

@@ -32,3 +32,7 @@
 | 2026-10-08 | Instruktøren (skalering efter spillerens styrke) er fjernet | Jon: med mange soldater og gode våben blev det umuligt. Belønninger skal kunne mærkes. |
 | 2026-10-08 | Faste fjendetyper + hændelser giver presset | Jon: normal horde med fast styrke, plus stærkere specielle fjender, bosser og fjendtlige helte. |
 | 2026-10-08 | Belønningsbudget pr. bane | Uden loft gav fæstninger og våbenkister en lavine; budgettet gør valgene vigtige. |
+| 2026-10-08 | Skifte i skudhastighed bevarer hver soldats fase | 2× skud gav salver; Jon vil have kontinuerlig ild. |
+| 2026-10-08 | Ingen mure mellem sporene, sporbredde 7,5 | Jon: bredere kolonner, murene skal væk. |
+| 2026-10-08 | Farer der ruller ind i lejren | Jon: forhindringer skal kunne dræbe truppen, hvis man ikke flytter sig. |
+| 2026-10-08 | Offerporte og eskorterede belønninger | Jon: belønninger skal være svære, og man skal nogle gange ofre soldater. |
