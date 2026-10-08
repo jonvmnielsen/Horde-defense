@@ -23,6 +23,8 @@ const characters = [
   // low-poly skeleton for the big horde (~35% of the triangles; they are small on screen)
   { src: `${SK}/Skeleton_Minion.glb`, out: 'skeleton_minion_lod.glb', simplify: 0.25,
     anims: ['Running_A', 'Walking_D_Skeletons', 'Death_C_Skeletons'], drop: [] },
+  { src: `${SK}/Skeleton_Warrior.glb`, out: 'skeleton_warrior_lod.glb', simplify: 0.3,
+    anims: ['Running_A', 'Walking_D_Skeletons', 'Death_C_Skeletons'], drop: [] },
   // hero: the mage freed from the stone prison
   { src: `${AD}/Mage.glb`, out: 'mage.glb',
     anims: ['Spellcast_Shoot', 'Idle', 'Running_A', 'Cheer', 'Death_A'],

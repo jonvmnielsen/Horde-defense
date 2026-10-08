@@ -25,3 +25,7 @@
 | 2026-10-07 | Soldater skyder altid; tomme skud lander i jorden ved max rækkevidde | Jon: ilden skal være konstant, også i tomme spor. |
 | 2026-10-07 | Ingen udglatning på styringen | Jon oplevede forsinkelse; truppen følger nu fingeren direkte. |
 | 2026-10-07 | Helte befries fra stenfanger; stenen brydes i 10 trin | Jons idé om gradvist færre sten, lavet i 3D med klippestykker i stedet for stillbilleder. |
+| 2026-10-08 | Horden spawner som rækker i fast tempo i stedet for enkeltvis | Jon: kolonnen skal være én masse som i reklamerne. |
+| 2026-10-08 | Gennemboring af overskydende skade | Svage skeletter i tusindvis gjorde våbenopgraderinger værdiløse; nu tæller både antal og våben. |
+| 2026-10-08 | Instruktør der skalerer skeletternes liv efter truppens ildkraft | Belønningerne gav en lavine, så horden ikke længere pressede. Nu er der altid tryk på; trykket stiger gennem banen. |
+| 2026-10-08 | Sidesporene fyldes uden pauser og er fulde fra start | Jon: der skal hele tiden være noget på vej i alle kolonner. |

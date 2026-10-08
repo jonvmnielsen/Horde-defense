@@ -26,3 +26,8 @@ Ved indlæsning afspilles hver valgt animation på CPU'en, og hver vertex' posit
 - Våben: `S.weapon` indekserer `WEAPON[]` (skade-multiplikator og boltfarve). `S.rapid` = sekunder tilbage med 2× skud.
 - `tools/sim.py` bruger `botTarget()`: forsvar sporet med størst trussel, ellers det spor med bedst belønning pr. liv.
 - Animerede figurer kaster skygger via `createVatDepthMaterial` (samme VAT-opslag i dybde-pass).
+
+## Horden og instruktøren
+- `spawnRow()` lægger en række skeletter på tværs af et spor; `hordeWidth()` giver antal pr. række (vokser over banen, med bølger). En ny række kommer, hver gang massen har flyttet sig `rowGap`.
+- `pierce()` sender overskydende skade videre til de nærmeste skeletter bag målet.
+- `updateDirector()` beregner truppens ildkraft og den indkommende mængde liv og sætter `S.pressure` (liv-multiplikator for midtersporet). `S.trim` finjusterer ud fra hvor fronten står. Skeletter uden for skudvidde justeres med det samme.

@@ -3,14 +3,14 @@
 _Senest opdateret: 2026-10-07_
 
 ## Nu
-Runde 4 efter Jons tredje test: masser af fjender, konstant ild, øjeblikkelig styring, helte.
+Runde 5 efter Jons fjerde test (8. okt): horden skal være én masse, og alle spor skal altid have noget på vej.
 
-- **Horde:** midtersporet fyldes (6 → 26 fjender i sekundet gennem banen, stormløb på 50-110). Skeletterne er svage enkeltvis (lav-poly model, ~1.900 trekanter) og kaster kun kontaktskygger, så ydelsen holder.
-- **Konstant ild:** alle soldater skyder i hver armbrøst-cyklus; uden mål flyver bolten til max rækkevidde og slår ned i jorden.
-- **Styring:** truppen følger fingeren 1:1 uden udglatning; opløsning max 1,5× med hurtigere automatisk nedskalering.
-- **Helte:** "BEFRI HELT"-fanger i sidesporene: en magiker frosset i sten, klippestykker falder af i 10 trin når man skyder. Befriet helt står foran truppen og kaster ildkugler med område-skade (max 3).
-- **Større valg:** "VÅBEN ++" (to våbentrin på én gang, bag en tyk mur), fæstning (+99), fanger, almindelige våbenkister, 2× skud, bomber, fjende-grupper på 15-45.
-- **Bot-test:** kun midten taber efter ~30 s; en aktiv spiller vinder bane 1 og 2 (~1.600-2.000 drab pr. bane).
+- **Horde som masse:** midtersporet fyldes fra ende til anden af rækker (2,6 → 8 skeletter pr. række, 0,8 mellem rækkerne), der marcherer i samme tempo (2,7 → 3,9 enheder/s) med tykke og tynde bølger. Banen starter med sporet allerede fyldt.
+- **Gennemboring:** en bolt, der har skade tilbage efter et drab, fortsætter ind i op til 6 skeletter bag (så stor trup og gode våben mejer gennem massen).
+- **Instruktør (director):** nye skeletter (og dem der endnu ikke er inden for skudvidde) får liv efter truppens ildkraft, så massen altid står tæt på truppen. Trykket bygges op gennem banen; en ny belønning giver ~5 sekunders luft.
+- **Sidespor altid fyldt:** hændelser kommer i forlængelse af hinanden (0,1-0,5 s mellemrum), og sporene er fyldt fra start. Grupper marcherer i formation.
+- **Boss** dimensioneres efter truppen (~15 sekunders samlet ild).
+- **Bot-test:** smart spiller vinder 3 af 7 gange på bane 1; kun midten taber efter ~35 s.
 
 ## Udgivelse
 - Live på https://jonvmnielsen.github.io/Horde-defense/ (GitHub Pages, udgives automatisk ved push til `main`).

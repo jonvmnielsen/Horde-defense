@@ -84,7 +84,7 @@ window.addEventListener('resize', resize);
 const loader = new GLTFLoader();
 const loadEl = document.getElementById('loading');
 let loaded = 0;
-const files = ['env.json', 'rogue.json', 'skeleton_minion_lod.json', 'skeleton_warrior.json', 'mage.json'];
+const files = ['env.json', 'rogue.json', 'skeleton_minion_lod.json', 'skeleton_warrior.json', 'mage.json', 'skeleton_warrior_lod.json'];
 function load(f) {
   return loader.loadAsync('assets/' + f).then((g) => {
     loaded++;
@@ -93,7 +93,7 @@ function load(f) {
     return g;
   });
 }
-const [envG, rogueG, minionG, warriorG, mageG] = await Promise.all(files.map(load));
+const [envG, rogueG, minionG, warriorG, mageG, warriorLodG] = await Promise.all(files.map(load));
 
 try { await Promise.race([document.fonts.load('80px "Lilita One"'), new Promise((r) => setTimeout(r, 1500))]); } catch (e) { /* fall back to system font */ }
 buildWorld(scene, envG);
@@ -114,20 +114,25 @@ const warriorBaked = bakeCharacter(warriorG, {
   clips: [{ name: 'Running_A', loop: true }, { name: 'Walking_D_Skeletons', loop: true }, { name: 'Death_C_Skeletons', loop: false }, { name: '2H_Melee_Attack_Chop', loop: true }, { name: 'Hit_A', loop: false }],
   part: (name) => (/Eyes/.test(name) ? { tint: [1.0, 0.15, 0.05], emissive: 6, useMap: false } : {}),
 });
+const warriorLodBaked = bakeCharacter(warriorLodG, {
+  height: 1.45,
+  clips: [{ name: 'Running_A', loop: true }, { name: 'Walking_D_Skeletons', loop: true }, { name: 'Death_C_Skeletons', loop: false }],
+  part: (name) => (/Eyes/.test(name) ? { tint: [1.0, 0.15, 0.05], emissive: 6, useMap: false } : {}),
+});
 const mageBaked = bakeCharacter(mageG, {
   height: 1.55,
   clips: [{ name: 'Spellcast_Shoot', loop: true }, { name: 'Idle', loop: true }, { name: 'Running_A', loop: true }, { name: 'Cheer', loop: true }],
 });
-for (const b of [rogueBaked, minionBaked, warriorBaked, mageBaked]) if (b.map) b.map.anisotropy = MAX_ANISO;
+for (const b of [rogueBaked, minionBaked, warriorBaked, warriorLodBaked, mageBaked]) if (b.map) b.map.anisotropy = MAX_ANISO;
 
 // team colours: soldiers green cloth -> royal blue; skeleton cloaks (blue/purple) -> blood red
 const blueMat = createVatMaterial(rogueBaked, { recolor: [0.22, 0.55, 0.61, 1.25], key: 'blue', roughness: 0.6 });
 const redMinionMat = createVatMaterial(minionBaked, { recolor: [0.5, 0.99, 0.99, 1.8], tint: [0.9, 0.3, 0.24], key: 'red1' });
-const redWarriorMat = createVatMaterial(warriorBaked, { recolor: [0.5, 0.99, 0.99, 1.8], tint: [0.78, 0.22, 0.18], key: 'red2' });
+const redWarriorMat = createVatMaterial(warriorLodBaked, { recolor: [0.5, 0.99, 0.99, 1.8], tint: [0.78, 0.22, 0.18], key: 'red2' });
 
 const soldiers = new Crowd(rogueBaked, TROOP.visibleMax + 40, blueMat);
-const minions = new Crowd(minionBaked, 1200, redMinionMat);
-const warriors = new Crowd(warriorBaked, 220, redWarriorMat);
+const minions = new Crowd(minionBaked, 1600, redMinionMat);
+const warriors = new Crowd(warriorLodBaked, 260, redWarriorMat);
 // the horde is huge: only contact shadows for skeletons, real shadows for the troop, heroes and the boss
 minions.mesh.castShadow = false; warriors.mesh.castShadow = false;
 const heroes = new Crowd(mageBaked, 6, createVatMaterial(mageBaked, { key: 'mage', roughness: 0.55 }));
@@ -302,14 +307,20 @@ function startLevel(n, troopCount) {
     heroList: [], fireballs: [], weapon: 0, rapid: 0, stats: { ev: {}, pop: {}, lane: [0, 0, 0] }, nextHorde: 0.4, kills: 0, lost: 0, shake: 0, endT: 0, bot: S?.bot || null,
     // each side lane plays its own shuffled deck of events, so the two sides never mirror each other
     // a scripted opening (popped from the end) guarantees an early weapon chest and +5s, then the decks are random
-    side: [{ lane: LEFT, deck: ['plus1', 'plus5'], next: 0 }, { lane: RIGHT, deck: ['plus1', 'weapon', 'plus5'], next: 0 }],
+    // scripted opening (popped from the end, nearest first): soldiers on both sides and an early weapon chest, then random decks
+    side: [{ lane: LEFT, deck: ['squad', 'plus5', 'plus1', 'plus1'], next: 0 }, { lane: RIGHT, deck: ['plus5', 'plus1', 'weapon', 'plus1'], next: 0 }],
+    rowAcc: 0, hordeSpeed: 3, pressure: 1, trim: 1, front: 0,
   };
   const vis = Math.min(S.count, TROOP.visibleMax);
   for (let k = 0; k < vis; k++) spawnVisibleSoldier(S.cx + (Math.random() - 0.5) * 2, TROOP_Z + (Math.random() - 0.5) * 2, true);
   // opening: a horde already on its way, +1 blocks in both side lanes
-  for (let k = 0; k < 14; k++) spawnEnemy(-46 - Math.random() * 28);
-  for (const lane of [LEFT, RIGHT]) for (let z = -16; z > -50; z -= 2.4) addItem('plus1', lane, z, cfg.plus1Hp);
-  S.side[0].next = 6; S.side[1].next = 4;
+  S.hordeSpeed = cfg.hordeSpeed[0];
+  for (let z = cfg.hordeStartZ; z > SPAWN_Z; z -= cfg.rowGap) spawnRow(MID, z, hordeWidth(0, z));
+  for (const sd of S.side) {
+    let z = -15;
+    while (z > SPAWN_Z + 3) { const len = sideEvent(sd.lane, sd, z); z -= len + 1.2; }
+    sd.next = 0.4;
+  }
   levelLabel.textContent = 'BANE ' + n;
   overEl.classList.remove('on'); winEl.classList.remove('on');
   showBanner('BANE ' + n, 'blue');
@@ -331,22 +342,21 @@ function addWall(lane, z, hp) {
 }
 
 /** Run the next event in a side lane. Returns its length in lane units (so the next one starts after it). */
-function sideEvent(lane, deckState) {
+function sideEvent(lane, deckState, z0 = SPAWN_Z) {
   const cfg = S.cfg;
   if (!deckState.deck.length) deckState.deck = shuffled(EVENTS.deck);
   const ev = deckState.deck.pop();
   S.stats.ev[ev] = (S.stats.ev[ev] || 0) + 1;
-  const z0 = SPAWN_Z;
   const prog = Math.min(1, S.t / cfg.duration);
   switch (ev) {
     case 'plus1': { const n = 8 + Math.floor(Math.random() * 7); for (let k = 0; k < n; k++) addItem('plus1', lane, z0 - k * 1.9, cfg.plus1Hp); return n * 1.9; }
     case 'plus5': { addItem('plus5', lane, z0, cfg.plus5Hp); addItem('plus5', lane, z0 - 3, cfg.plus5Hp); return 6; }
-    case 'squad': { const n = Math.round(cfg.squadSize[0] + (cfg.squadSize[1] - cfg.squadSize[0]) * prog); for (let k = 0; k < n; k++) spawnEnemy(z0 - Math.random() * 6, { lane }); return 8; }
+    case 'squad': { const n = Math.round(cfg.squadSize[0] + (cfg.squadSize[1] - cfg.squadSize[0]) * prog); const rows = Math.ceil(n / 6); for (let r = 0; r < rows; r++) spawnRow(lane, z0 - r * cfg.rowGap, Math.min(6, n - r * 6)); return rows * cfg.rowGap + 1; }
     case 'fort': { addWall(lane, z0, cfg.fortHp); addItem('plus99', lane, z0 - 2.4, cfg.plus99Hp); return 6; }
-    case 'weapon': { if (S.weapon + S.items.filter((i) => i.alive && i.kind === 'weapon').length >= WEAPON.length - 1) return sideEvent(lane, deckState); addItem('weapon', lane, z0, cfg.weaponHp); return 4; }
-    case 'weapon2': { if (S.weapon >= WEAPON.length - 2) return sideEvent(lane, deckState); addWall(lane, z0, cfg.bigWeaponWallHp); addItem('weapon2', lane, z0 - 2.8, cfg.bigWeaponHp); return 7; }
+    case 'weapon': { if (S.weapon + S.items.filter((i) => i.alive && i.kind === 'weapon').length >= WEAPON.length - 1) return sideEvent(lane, deckState, z0); addItem('weapon', lane, z0, cfg.weaponHp); return 4; }
+    case 'weapon2': { if (S.weapon >= WEAPON.length - 2) return sideEvent(lane, deckState, z0); addWall(lane, z0, cfg.bigWeaponWallHp); addItem('weapon2', lane, z0 - 2.8, cfg.bigWeaponHp); return 7; }
     case 'prisoner': {
-      if (S.heroList.length + S.items.filter((i) => i.alive && i.kind === 'prisoner').length >= cfg.maxHeroes) return sideEvent(lane, deckState);
+      if (S.heroList.length + S.items.filter((i) => i.alive && i.kind === 'prisoner').length >= cfg.maxHeroes) return sideEvent(lane, deckState, z0);
       const st = statues.alloc();
       if (st < 0) return 4;
       statues.play(st, 'Idle', clock, 0.0001, Math.random());
@@ -398,6 +408,26 @@ function loseTroops(n, x, z, label = true) {
   while (visibleAlive > S.count) { const s = nearestSoldier(x, z); if (!s) break; killSoldier(s); }
 }
 
+/** Width (enemies per row) of the middle horde: grows over the level, with thick and thin waves. */
+function hordeWidth(p, z = 0) {
+  const c = S.cfg;
+  const base = c.hordeWidth[0] + (c.hordeWidth[1] - c.hordeWidth[0]) * p;
+  const wave = 1 + c.hordeWave * Math.sin((S.t * c.hordeSpeed[0] - z) * 0.11);
+  return Math.max(1, Math.min(ROW_MAX, base * wave));
+}
+const ROW_MAX = 8;
+/** One row of enemies across a lane (fractional widths are dithered so density changes smoothly). */
+function spawnRow(lane, z, width) {
+  const n = Math.floor(width) + (Math.random() < width % 1 ? 1 : 0);
+  const span = LANE_W - 1.0;
+  const shift = Math.random(); // each row is offset differently so the rows never line up into stripes
+  for (let c = 0; c < n; c++) {
+    const f = ((((c + shift + (Math.random() - 0.5) * 0.7) / n) % 1) + 1) % 1; // 0..1 across the lane
+    const x = LANES[lane] - span / 2 + span * f;
+    spawnEnemy(z + (Math.random() - 0.5) * S.cfg.rowGap * 0.8, { lane, x });
+  }
+}
+
 function spawnEnemy(z, opts = {}) {
   const cfg = S.cfg;
   const prog = Math.min(1, S.t / cfg.duration);
@@ -408,12 +438,15 @@ function spawnEnemy(z, opts = {}) {
   const lane = opts.lane ?? MID;
   const walk = !warrior && Math.random() < 0.2;
   const e = {
-    crowd, i, lane, x: LANES[lane] + (Math.random() - 0.5) * (LANE_W - 1.2), z,
-    hp: (warrior ? cfg.warriorHp : cfg.minionHp) * (1 + cfg.hpGrowth * prog), pending: 0,
-    speed: cfg.enemySpeed * (warrior ? 0.85 : 1) * (walk ? 0.8 : 1) * (0.88 + Math.random() * 0.24),
+    crowd, i, lane, x: opts.x ?? LANES[lane] + (Math.random() - 0.5) * (LANE_W - 1.2), z,
+    baseHp: (warrior ? cfg.warriorHp : cfg.minionHp) * (1 + cfg.hpGrowth * prog * prog), hp: 0, pending: 0,
+    speed: S.hordeSpeed * (0.97 + Math.random() * 0.06), // one pace for everyone, so the mass stays packed
     state: 'run', t: 0, flash: 0, warrior, y: 0,
   };
-  crowd.play(i, walk ? 'Walking_D_Skeletons' : 'Running_A', clock, (walk ? 1.35 : 1.3) * (0.92 + Math.random() * 0.2), Math.random() * 2);
+  e.hp = e.baseHp * (lane === MID ? S.pressure : 1);
+  // a shambling mass: mostly the skeleton walk, some jog; playback matched to the march speed
+  const pace = S.hordeSpeed / 3;
+  crowd.play(i, walk || Math.random() < 0.65 ? 'Walking_D_Skeletons' : 'Running_A', clock, (0.95 + Math.random() * 0.2) * Math.max(0.7, pace) * (walk ? 1.2 : 1), Math.random() * 2);
   S.enemies.push(e);
 }
 
@@ -421,7 +454,9 @@ function spawnBoss() {
   const i = bosses.alloc();
   if (i < 0) return;
   const cfg = S.cfg;
-  S.boss = { i, x: LANES[MID], z: SPAWN_Z - 2, hp: cfg.bossHp, max: cfg.bossHp, pending: 0, speed: cfg.bossSpeed, state: 'walk', flash: 0, atk: 0, y: 0, t: 0 };
+  // the boss is sized to the troop that meets it: base health plus ~bossSeconds of the troop's current firepower
+  const bossHp = cfg.bossHp + S.count * WEAPON[S.weapon].mul * TROOP.boltDamage / SHOOT_LEN * cfg.bossSeconds;
+  S.boss = { i, x: LANES[MID], z: SPAWN_Z - 2, hp: bossHp, max: bossHp, pending: 0, speed: cfg.bossSpeed, state: 'walk', flash: 0, atk: 0, y: 0, t: 0 };
   bosses.play(i, 'Walking_D_Skeletons', clock, 0.95);
   showBanner('BOSS', 'red');
   S.shake = 0.4;
@@ -560,10 +595,31 @@ function damage(t, dmg, hx, hy, hz) {
     if (t.hp <= 0) popItem(t);
     return;
   }
-  if (t.state !== 'run') return;
+  if (t.state !== 'run') { pierce(t, dmg, hx, hz); return; } // already dead: the bolt carries on
+  const before = t.hp;
   t.hp -= dmg; t.flash = 0.09;
   sparks(hx, hy, hz, 1.0, 0.95, 0.85, 2);
-  if (t.hp <= 0) killEnemy(t, true);
+  if (t.hp <= 0) { killEnemy(t, true); if (dmg - before > 0.01) pierce(t, dmg - before, hx, hz); }
+}
+
+/** A bolt that has killed its target keeps going through the enemies right behind it, spending what is left. */
+function pierce(from, left, hx, hz) {
+  const lane = laneOf(from.x);
+  let z = from.z;
+  for (let n = 0; n < TROOP.pierce && left > 0.01; n++) {
+    let next = null, bz = -1e9;
+    for (const e of S.enemies) {
+      if (e.state !== 'run' || e.z >= z || e.z < z - 2.6 || e.z <= bz || laneOf(e.x) !== lane || Math.abs(e.x - hx) > 1.4) continue;
+      bz = e.z; next = e;
+    }
+    if (!next) return;
+    const before = next.hp;
+    next.hp -= left; next.flash = 0.09;
+    if (n < 2) sparks(next.x, 0.9, next.z, 1.0, 0.95, 0.85, 1);
+    if (next.hp > 0) return;
+    killEnemy(next, true);
+    left -= before; z = next.z;
+  }
 }
 
 function sparks(x, y, z, r, g, b, n) {
@@ -781,6 +837,35 @@ function updateHeroes(dt, playing) {
   });
 }
 
+// ---------------------------------------------------------------- director: keeps the mass pressing on the troop
+// Watches how close the front of the middle horde gets. If the troop holds it far away, new skeletons come in tougher;
+// if the front is on top of the troop, they ease off. A strong troop always meets a horde at its throat.
+function updateDirector(dt) {
+  const c = S.cfg, d = c.director;
+  const p = Math.min(1, S.t / c.duration);
+  const reach = TROOP_Z - TROOP.range;
+  let front = -1e9;
+  for (const e of S.enemies) if (e.state === 'run' && e.lane === MID && e.z > front) front = e.z;
+  S.front = front;
+  // feed-forward: what the troop can kill per second vs. how much health walks in per second at pressure 1
+  const fire = S.count * WEAPON[S.weapon].mul * TROOP.boltDamage * fireSpeed() / SHOOT_LEN;
+  const share = c.warriorShare * (1 + p);
+  const meanHp = (c.minionHp * (1 - share) + c.warriorHp * share) * (1 + c.hpGrowth * p * p);
+  const inflow = S.hordeSpeed / c.rowGap * hordeWidth(Math.pow(p, 1.3)) * meanHp;
+  // trim: a slow correction from where the front actually stands
+  const dist = TROOP_Z - front;
+  if (S.t > d.grace && dist > d.target + d.band) S.trim = Math.min(d.trim[1], S.trim * (1 + d.rise * dt));
+  else if (dist < d.target - d.band) S.trim = Math.max(d.trim[0], S.trim * (1 - d.fall * dt));
+  const want = Math.max(1, fire / inflow * (d.share[0] + (d.share[1] - d.share[0]) * p) * S.trim); // pressure builds over the level
+  // ease towards it: a new reward buys a few seconds of breathing room before the horde catches up
+  const before = S.pressure;
+  S.pressure += (want - S.pressure) * Math.min(1, dt / d.lag);
+  if (Math.abs(S.pressure - before) > 1e-3) {
+    // skeletons not yet in crossbow range are re-tuned at once
+    for (const e of S.enemies) if (e.state === 'run' && e.lane === MID && e.z < reach) e.hp = e.baseHp * S.pressure;
+  }
+}
+
 // ---------------------------------------------------------------- bots (balance testing only)
 const VALUE = { plus1: 1, plus5: 5, plus99: 99, weapon: 400, weapon2: 900, prisoner: 700, rapid: 60, bomb: 40 };
 /** A greedy player: defends the lane with the most pressure, otherwise farms the lane with the best reward per health. */
@@ -794,7 +879,7 @@ function botTarget(style) {
   for (const it of S.items) if (it.alive && it.z > TROOP_Z - TROOP.range) { reward[it.lane] += VALUE[it.kind]; cost[it.lane] += it.hp; }
   for (const w of S.walls) if (w.alive && w.z > TROOP_Z - TROOP.range) cost[w.lane] += w.hp;
   const worst = threat.indexOf(Math.max(...threat));
-  if (threat[worst] > dps * 1.6) return LANES[worst];
+  if (threat[worst] > dps * 1.1) return LANES[worst];
   let bestL = worst, bestV = 0;
   for (const L of [LEFT, MID, RIGHT]) {
     const v = reward[L] / (cost[L] / dps + 2);
@@ -832,18 +917,15 @@ function update(dt) {
   // ---- spawns
   if (S.phase === 'horde') {
     const p = Math.min(1, S.t / cfg.duration);
-    const rate = cfg.spawnStart + (cfg.spawnEnd - cfg.spawnStart) * Math.pow(p, 1.5);
-    S.nextHorde -= dt;
-    if (S.nextHorde <= 0) {
-      const big = p > 0.15 && Math.random() < cfg.burstChance;
-      const n = big ? cfg.burst[0] + Math.floor(Math.random() * (cfg.burst[1] - cfg.burst[0])) : 1;
-      for (let k = 0; k < n; k++) spawnEnemy(SPAWN_Z - Math.random() * (big ? 8 : 0.5));
-      S.nextHorde = big ? n / rate * 0.7 : 1 / rate;
-    }
+    S.hordeSpeed = cfg.hordeSpeed[0] + (cfg.hordeSpeed[1] - cfg.hordeSpeed[0]) * p;
+    updateDirector(dt);
+    // a new row enters every time the mass has advanced one row gap: the lane never empties behind it
+    S.rowAcc += S.hordeSpeed * dt;
+    while (S.rowAcc >= cfg.rowGap) { S.rowAcc -= cfg.rowGap; spawnRow(MID, SPAWN_Z - S.rowAcc, hordeWidth(Math.pow(p, 1.3))); }
     if (S.t >= cfg.duration) { S.phase = 'boss'; spawnBoss(); }
   } else if (S.phase === 'boss') {
-    S.nextHorde -= dt;
-    if (S.nextHorde <= 0) { spawnEnemy(SPAWN_Z - Math.random()); S.nextHorde = 1 / cfg.bossEscortRate; }
+    S.rowAcc += S.hordeSpeed * dt;
+    while (S.rowAcc >= cfg.rowGap) { S.rowAcc -= cfg.rowGap; spawnRow(MID, SPAWN_Z - S.rowAcc, cfg.bossEscortWidth); }
   }
   if (playing) {
     for (const sd of S.side) {
@@ -1118,7 +1200,7 @@ if (!SNAP) requestAnimationFrame(frame);
 // test hooks: screenshots and balance simulation
 window.__game = {
   get S() { return S; },
-  step: (n) => { for (let i = 0; i < n; i++) { update(1 / 30); floaters.update(1 / 30, window.innerWidth, window.innerHeight); } updateCamera(1 / 30); composer.render(); return { count: S.count, visible: visibleAlive, phase: S.phase, weapon: S.weapon }; },
+  step: (n) => { for (let i = 0; i < n; i++) { update(1 / 30); floaters.update(1 / 30, window.innerWidth, window.innerHeight); } updateCamera(1 / 30); composer.render(); return { count: S.count, visible: visibleAlive, phase: S.phase, weapon: S.weapon, enemies: S.enemies.length, pressure: +S.pressure.toFixed(1) }; },
   // run a whole level with a bot at 30 steps/s without rendering; returns the outcome
   sim: (bot, level = 1, troop = TROOP.start, maxSeconds = 400) => {
     S.bot = bot;
@@ -1130,7 +1212,7 @@ window.__game = {
       update(1 / 30);
       peak = Math.max(peak, S.count);
       S.stats.lane[laneOf(S.cx)]++;
-      if (i % 300 === 0) trace.push(`${Math.round(S.t)}s:${S.count}/w${S.weapon}`);
+      if (i % 300 === 0) trace.push(`${Math.round(S.t)}s:${S.count}/w${S.weapon}/p${S.pressure.toFixed(1)}/t${S.trim.toFixed(2)}/f${Math.round(TROOP_Z - S.front)}`);
     }
     const out = { bot, level, result: S.phase, t: Math.round(S.t), troop: S.count, peak, weapon: S.weapon, kills: S.kills, ev: S.stats.ev, pop: S.stats.pop, lane: S.stats.lane.map((v) => Math.round(v / 30)), boss: S.boss ? Math.max(0, Math.round(S.boss.hp)) : null, trace: trace.join(' ') };
     S.bot = null;
