@@ -1,21 +1,25 @@
 # Status
 
-_Senest opdateret: 2026-10-07_
+_Senest opdateret: 2026-10-08_
 
 ## Nu
-Runde 7 (8. okt): kontinuerlig ild, farer, bredere åbne spor, svære belønninger, løbende fjender.
+Runde 8 (8. okt): finish, helte med evner, ×2-porte, boss der kaster, base og banekort.
 
-- **Ild:** skudhastighed (2× skud) skifter uden at nulstille soldaternes rytme, så der aldrig skydes i salver.
-- **Spor:** 7,5 brede (før 6), ingen mure mellem sporene; sporene markeres af en slidt stribe og små sten. Kameraet rammer sporene lidt længere fremme, så de ved truppen går ud over skærmkanten.
-- **Farer:** rullende krudttønder (6 liv; skydes de, eksploderer de og dræber fjender omkring; når de truppen, dræber de 14) og kampesten (260 liv; knuser 22 soldater). Begge ruller videre ind på pladsen; en rød stribe viser deres bane. Første fare efter 15 s, derefter ca. hver 9. s, plus "tønder" i sidesporene.
-- **Svære belønninger:** fæstninger (+99) og VÅBEN ++ har 10 krigere som eskorte foran muren. OFFERPORT: koster 30 % af truppen (mindst 15) og giver straks VÅBEN ++ eller en helt.
-- **Fjender løber:** løbecyklus med afspilning tilpasset farten (3,2 → 5,2 enheder/s), døde fjender kastes lidt bagud.
-- **Bot-test bane 1:** aktiv spiller vinder 7/8 (ender med 300-550), forsigtig spiller 2/2, kun-midten taber efter ~20 s.
+- **Træffølelse:** fjender kastes tydeligere bagud, skærmen blinker ved store drab (guldkriger, skeletmagiker, boss, tønde, ×2), skadetal over boss og skeletmagikere.
+- **Lys og stemning:** solnedgangslys, flammer i fakler og bål, røgsøjler i horisonten.
+- **Belønninger som rigtige ting:** kasser (+1/+5), stablede kasser (+99), kister (VÅBEN +/++), tønde (2× skud), krudttønde (bombe), portbue (×2).
+- **Fanebærer:** en ridder med blåt flag står forrest i truppen; soldaterne gløder svagt i våbnets farve.
+- **×2-porte** i midten af horden to gange pr. bane (fordobler truppen, højst 150 + 80 pr. bane).
+- **Tre helte:** Ildmagiker (ildkugler), Frostmagiker (bremser fjender), Helbreder (giver soldater tilbage). Fangen viser navnet på helten indeni.
+- **Bossen kaster sten** mod truppen; en rød ring viser hvor de lander. Flyt dig, eller mist 8+ soldater.
+- **Base og banekort:** kortet viser 12 baner med 3 stjerner (efter overlevende). Basen: Kaserne (overlevende venter til næste bane: 10 → 200), Våbensmed (startvåben), Heltehal (helte fra start). Gemmes på telefonen.
+- **Offerporten** er parkeret (koden er der, den bliver bare ikke uddelt).
+- **Bot-test** (uden base-opgraderinger): bane 1 aktiv 3/4, forsigtig 2/2, kun-midten taber efter 23 s. Bane 2 (30 soldater) 4/5. Bane 3 (50) 4/4. Bane 4 (60) 2/4: her skal basen (våbensmed, større kaserne) gøre en forskel.
 
 ## Udgivelse
 - Live på https://jonvmnielsen.github.io/Horde-defense/ (GitHub Pages, udgives automatisk ved push til `main`).
 
 ## Næste
-1. Jon tester runde 3 på telefon.
-2. Beslut om banerne skal have en slutning (fast antal pr. kapitel) eller fortsætte uendeligt.
-3. Beslut tema (fantasy som nu, eller moderne militær med andre modeller).
+1. Jon tester runde 8 på telefon.
+2. Tema: soldater mod zombier, når Jon har lagt Quaternius-pakkerne (Toon Shooter, Zombies, Animated Women) i repoet.
+3. Kvindelige helte (snigskytte, læge, sprængstofekspert) i bure, når Jon har svaret på forslaget.

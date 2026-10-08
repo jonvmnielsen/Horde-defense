@@ -225,6 +225,7 @@ export function createVatMaterial(baked, params = {}) {
     sh.uniforms.uTexW = { value: baked.texW };
     sh.uniforms.uRecolor = { value: new THREE.Vector4(...(params.recolor || [0, 0, -1, 1])) };
     sh.uniforms.uTint = { value: new THREE.Color(...(params.tint || [1, 1, 1])) };
+    sh.uniforms.uRim = params.rim || { value: new THREE.Color(0, 0, 0) };
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', `#include <common>
 uniform highp sampler2D uPosTex;
@@ -272,6 +273,7 @@ varying float vUseMap;
 varying float vFlash;
 uniform vec4 uRecolor;
 uniform vec3 uTint;
+uniform vec3 uRim;
 vec3 rgb2hsv(vec3 c){ vec4 K = vec4(0.0, -1.0/3.0, 2.0/3.0, -1.0); vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
   vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r)); float d = q.x - min(q.w, q.y); float e = 1.0e-10;
   return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x); }
@@ -290,7 +292,9 @@ vec3 hsv2rgb(vec3 c){ vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0); vec3 p = abs(fr
   diffuseColor.rgb *= uTint;
   diffuseColor.rgb *= vMat.rgb;`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-  totalEmissiveRadiance += vMat.rgb * vMat.w + vec3(1.0, 0.95, 0.85) * vFlash;`);
+  totalEmissiveRadiance += vMat.rgb * vMat.w + vec3(1.0, 0.95, 0.85) * vFlash;
+  float rimF = 1.0 - abs(dot(normalize(normal), normalize(vViewPosition)));
+  totalEmissiveRadiance += uRim * rimF * rimF * rimF;`);
   };
   m.customProgramCacheKey = () => 'vat' + (params.key || '');
   return m;

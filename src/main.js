@@ -6,10 +6,11 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { PropSet } from './props.js';
 import { bakeCharacter, createVatMaterial, Crowd, setVatTime } from './vat.js';
 import { buildWorld, makeSky, LANES, LANE_W, LANE_END_Z, EDGE } from './world.js';
 import { Particles, Bolts, Floaters, RADIAL } from './fx.js';
-import { levelConfig, TROOP, WEAPON, EVENTS, ENEMY } from './levels.js';
+import { levelConfig, TROOP, WEAPON, EVENTS, ENEMY, BASE, LEVEL_COUNT } from './levels.js';
 
 const params = new URLSearchParams(location.search);
 const SNAP = params.has('snap'); // deterministic mode for screenshots
@@ -28,7 +29,7 @@ renderer.shadowMap.autoUpdate = true; // units are animated, so shadows re-rende
 const MAX_ANISO = Math.min(8, renderer.capabilities.getMaxAnisotropy());
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0xb9c9d8, 70, 185);
+scene.fog = new THREE.Fog(0xd9a07a, 60, 175);
 const camera = new THREE.PerspectiveCamera(60, 1, 0.5, 900);
 const TROOP_Z = -2.6;
 const camBase = new THREE.Vector3(0, 13.5, 8.6);
@@ -38,11 +39,11 @@ const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 scene.environmentIntensity = 0.22;
 
-const hemi = new THREE.HemisphereLight(0xcfe0ff, 0x7a6a52, 0.62);
+const hemi = new THREE.HemisphereLight(0xb9c8ff, 0x6a4a3a, 0.7);
 scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xffe0b5, 3.6);
+const sun = new THREE.DirectionalLight(0xffb27a, 3.9);
 // low side light from the left so every unit throws a visible shadow across the ground toward the right
-sun.position.set(-34, 26, -8);
+sun.position.set(-36, 20, -14);
 sun.target.position.set(0, 0, -20);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
@@ -84,7 +85,7 @@ window.addEventListener('resize', resize);
 const loader = new GLTFLoader();
 const loadEl = document.getElementById('loading');
 let loaded = 0;
-const files = ['env.json', 'rogue.json', 'skeleton_minion_lod.json', 'skeleton_warrior.json', 'mage.json', 'skeleton_warrior_lod.json', 'skeleton_mage.json'];
+const files = ['env.json', 'rogue.json', 'skeleton_minion_lod.json', 'skeleton_warrior.json', 'mage.json', 'skeleton_warrior_lod.json', 'skeleton_mage.json', 'knight.json'];
 function load(f) {
   return loader.loadAsync('assets/' + f).then((g) => {
     loaded++;
@@ -93,10 +94,10 @@ function load(f) {
     return g;
   });
 }
-const [envG, rogueG, minionG, warriorG, mageG, warriorLodG, skMageG] = await Promise.all(files.map(load));
+const [envG, rogueG, minionG, warriorG, mageG, warriorLodG, skMageG, knightG] = await Promise.all(files.map(load));
 
 try { await Promise.race([document.fonts.load('80px "Lilita One"'), new Promise((r) => setTimeout(r, 1500))]); } catch (e) { /* fall back to system font */ }
-buildWorld(scene, envG);
+const world = buildWorld(scene, envG);
 makeSky(scene);
 
 // ---------------------------------------------------------------- characters (baked)
@@ -124,14 +125,19 @@ const skMageBaked = bakeCharacter(skMageG, {
   clips: [{ name: 'Walking_D_Skeletons', loop: true }, { name: 'Spellcast_Shoot', loop: true }, { name: 'Death_C_Skeletons', loop: false }],
   part: (name) => (/Eyes/.test(name) ? { tint: [0.7, 0.2, 1.0], emissive: 7, useMap: false } : {}),
 });
+const knightBaked = bakeCharacter(knightG, {
+  height: 1.5,
+  clips: [{ name: 'Idle', loop: true }, { name: 'Running_A', loop: true }, { name: 'Cheer', loop: true }],
+});
 const mageBaked = bakeCharacter(mageG, {
   height: 1.55,
   clips: [{ name: 'Spellcast_Shoot', loop: true }, { name: 'Idle', loop: true }, { name: 'Running_A', loop: true }, { name: 'Cheer', loop: true }],
 });
-for (const b of [rogueBaked, minionBaked, warriorBaked, warriorLodBaked, mageBaked, skMageBaked]) if (b.map) b.map.anisotropy = MAX_ANISO;
+for (const b of [rogueBaked, minionBaked, warriorBaked, warriorLodBaked, mageBaked, skMageBaked, knightBaked]) if (b.map) b.map.anisotropy = MAX_ANISO;
 
 // team colours: soldiers green cloth -> royal blue; skeleton cloaks (blue/purple) -> blood red
-const blueMat = createVatMaterial(rogueBaked, { recolor: [0.22, 0.55, 0.61, 1.25], key: 'blue', roughness: 0.6 });
+const troopRim = { value: new THREE.Color(0, 0, 0) };
+const blueMat = createVatMaterial(rogueBaked, { recolor: [0.22, 0.55, 0.61, 1.25], key: 'blue', roughness: 0.6, rim: troopRim });
 const redMinionMat = createVatMaterial(minionBaked, { recolor: [0.5, 0.99, 0.99, 1.8], tint: [0.9, 0.3, 0.24], key: 'red1' });
 const redWarriorMat = createVatMaterial(warriorLodBaked, { recolor: [0.5, 0.99, 0.99, 1.8], tint: [0.78, 0.22, 0.18], key: 'red2' });
 
@@ -145,10 +151,23 @@ const elites = new Crowd(warriorLodBaked, 40, createVatMaterial(warriorLodBaked,
 // Skeletmagiker: an enemy hero that stops in a side lane and blasts the troop from range
 const casters = new Crowd(skMageBaked, 6, createVatMaterial(skMageBaked, { recolor: [0.5, 0.99, 0.78, 1.5], key: 'caster' }));
 scene.add(elites.mesh, casters.mesh);
-const heroes = new Crowd(mageBaked, 6, createVatMaterial(mageBaked, { key: 'mage', roughness: 0.55 }));
+// hero kinds: same mage model, recoloured robes (the mage's purple is swapped to the hero's colour)
+const HERO = {
+  fire: { name: 'ILDMAGIKER', hue: 0.02, col: [3.2, 1.2, 0.3], css: '#ff7a1a', stroke: '#5a1a00' },
+  frost: { name: 'FROSTMAGIKER', hue: 0.55, col: [0.6, 1.8, 3.4], css: '#9fe4ff', stroke: '#06345a' },
+  heal: { name: 'HELBREDER', hue: 0.33, col: [0.6, 3.0, 0.9], css: '#9dff9d', stroke: '#0a4a12' },
+};
+const heroCrowds = {};
+for (const [k, h] of Object.entries(HERO)) {
+  heroCrowds[k] = new Crowd(mageBaked, 4, createVatMaterial(mageBaked, { recolor: [0.62, 0.92, h.hue, 1.2], key: 'hero_' + k, roughness: 0.55 }));
+  scene.add(heroCrowds[k].mesh);
+}
+// banner bearer: a knight with the troop's banner, always at the front of the troop
+const bearerCrowd = new Crowd(knightBaked, 1, createVatMaterial(knightBaked, { recolor: [0.22, 0.75, 0.6, 1.3], key: 'knight', roughness: 0.45, metalness: 0.2, rim: troopRim }));
+scene.add(bearerCrowd.mesh);
 // a mage frozen in stone: same model, desaturated to grey rock
 const statues = new Crowd(mageBaked, 6, createVatMaterial(mageBaked, { recolor: [0.0, 1.0, 0.1, 0.0], tint: [0.62, 0.6, 0.58], key: 'stone', roughness: 0.95 }));
-scene.add(heroes.mesh, statues.mesh);
+scene.add(statues.mesh);
 const bosses = new Crowd(warriorBaked, 2, createVatMaterial(warriorBaked, { recolor: [0.5, 0.99, 0.99, 1.8], tint: [1.0, 0.5, 0.42], key: 'boss', roughness: 0.55 }));
 scene.add(soldiers.mesh, minions.mesh, warriors.mesh, bosses.mesh);
 
@@ -173,7 +192,132 @@ function blob(x, z, s) {
 const glow = new Particles(2000, true);
 const dust = new Particles(1000, false);
 const bolts = new Bolts(800);
-scene.add(glow.points, dust.points, bolts.mesh);
+const smoke = new Particles(500, false); // slow columns of smoke over the battlefield
+scene.add(glow.points, dust.points, smoke.points, bolts.mesh);
+
+// flames on braziers and bonfires, smoke drifting up from burning ruins in the distance
+let fireAcc = 0, smokeAcc = 0;
+function updateFires(dt) {
+  fireAcc += dt;
+  if (fireAcc > 1 / 30) {
+    const step = fireAcc; fireAcc = 0;
+    for (const f of world.fires) {
+      const n = Math.random() < step * (f.size > 1 ? 40 : 14) ? (f.size > 1 ? 2 : 1) : 0;
+      for (let k = 0; k < n; k++) {
+        const r = f.size * 0.35;
+        const hot = Math.random();
+        glow.emit(f.x + (Math.random() - 0.5) * r, f.y + 0.1, f.z + (Math.random() - 0.5) * r, (Math.random() - 0.5) * 0.4, 1.2 + Math.random() * 1.6 * f.size, 0,
+          3.2, 1.0 + hot * 0.9, 0.2 + hot * 0.2, f.size * (0.55 + Math.random() * 0.4), 0.45 + Math.random() * 0.35, -1.5);
+      }
+      if (f.size > 1 && Math.random() < step * 2) smoke.emit(f.x, f.y + 1.6, f.z, 0.3, 1.4, 0, 0.32, 0.28, 0.27, 2.2, 3.2, -0.15);
+    }
+  }
+  smokeAcc += dt;
+  while (smokeAcc > 0.22) {
+    smokeAcc -= 0.22;
+    for (const c of world.smokes) smoke.emit(c.x + (Math.random() - 0.5) * 3, 1, c.z + (Math.random() - 0.5) * 3, 0.6 + Math.random() * 0.4, 2.6 + Math.random(), 0, 0.2, 0.18, 0.18, 5 + Math.random() * 3, 7, -0.1);
+  }
+  smoke.update(dt);
+}
+
+// a quick full-screen flash for the big moments (elite, caster, boss, barrel, ×2)
+const flashEl = document.getElementById('flash');
+function flashScreen(css, a = 0.5) {
+  if (S?.bot) return;
+  flashEl.style.transition = 'none';
+  flashEl.style.background = `radial-gradient(circle at 50% 45%, ${css}, transparent 75%)`;
+  flashEl.style.opacity = a;
+  void flashEl.offsetWidth;
+  flashEl.style.transition = 'opacity .45s ease-out';
+  flashEl.style.opacity = 0;
+}
+
+// ---------------------------------------------------------------- banner bearer (a knight at the front of the troop, flag above)
+const bearer = { i: bearerCrowd.alloc(), state: '' };
+const flag = envLib0('flag_blue').clone();
+flag.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material = o.material.clone(); } });
+{
+  const bb = new THREE.Box3().setFromObject(flag);
+  flag.scale.setScalar(3.2 / Math.max(0.01, bb.max.y - bb.min.y));
+}
+scene.add(flag);
+function envLib0(name) { let n = null; envG.scene.traverse((o) => { if (!n && o.parent === envG.scene && o.name === name) n = o; }); return n; }
+function updateBearer(dt) {
+  if (bearer.i < 0) return;
+  const want = S.phase === 'won' ? 'Cheer' : 'Idle';
+  if (bearer.state !== want) { bearer.state = want; bearerCrowd.play(bearer.i, want, clock, want === 'Cheer' ? 1 : 0.8, 0); }
+  const gone = S.count <= 0 && S.phase === 'lost';
+  const x = S.cx, z = TROOP_Z - troopRadius() * 0.72 - 1.0;
+  bearerCrowd.setTransform(bearer.i, x, gone ? -40 : 0, z, Math.PI, 1.15);
+  flag.position.set(x + 0.5, gone ? -40 : 0.05, z + 0.1);
+  flag.rotation.y = -Math.PI / 2 + Math.sin(clock * 2.1) * 0.15; // the cloth flies out sideways, readable from the camera
+  if (!gone) blob(x, z, 1.1);
+  // soldiers glow faintly in the colour of their weapon tier
+  const b = WEAPON[S.weapon].bolt, k = S.weapon === 0 ? 0 : 0.12 + S.weapon * 0.05;
+  troopRim.value.setRGB(b[0] * k, b[1] * k, b[2] * k);
+}
+
+// ---------------------------------------------------------------- boss rocks (thrown at the troop; a red ring shows where they land)
+const rockPool = [];
+function rockVisual() {
+  const g = new THREE.Group();
+  const r = envLib0('rock_single_C').clone();
+  r.scale.set(7, 8, 7);
+  r.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.color = new THREE.Color(0.75, 0.68, 0.62); o.castShadow = true; } });
+  g.add(r);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.86, 1, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff3a22, transparent: true, opacity: 0.8, depthWrite: false, depthTest: false }));
+  const fill = new THREE.Mesh(new THREE.CircleGeometry(1, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff2a1a, transparent: true, opacity: 0.22, depthWrite: false, depthTest: false }));
+  ring.renderOrder = fill.renderOrder = 5; // drawn over the soldiers: the warning must never hide under the troop
+  scene.add(g, ring, fill);
+  return { g, ring, fill };
+}
+function throwRock(b) {
+  const c = S.cfg.bossThrow;
+  const v = rockPool.pop() || rockVisual();
+  v.g.visible = v.ring.visible = v.fill.visible = true;
+  const tx = THREE.MathUtils.clamp(S.cx + (Math.random() - 0.5) * 1.5, -XMAX, XMAX);
+  S.rocks.push({ v, x0: b.x + 0.8, z0: b.z + 1, tx, tz: TROOP_Z - 0.5, t: 0, dur: c.warn, spin: (Math.random() - 0.5) * 8 });
+  bosses.play(b.i, '2H_Melee_Attack_Chop', clock, 1.3);
+  b.throwAnim = 0.75;
+}
+function releaseRock(r) { r.v.g.visible = r.v.ring.visible = r.v.fill.visible = false; rockPool.push(r.v); }
+function updateRocks(dt) {
+  const c = S.cfg.bossThrow;
+  for (const r of S.rocks) {
+    r.t += dt;
+    const s = Math.min(1, r.t / r.dur);
+    const x = r.x0 + (r.tx - r.x0) * s, z = r.z0 + (r.tz - r.z0) * s, y = 4.2 * (1 - s) + 14 * s * (1 - s) + 0.5;
+    r.v.g.position.set(x, y, z);
+    r.v.g.rotation.set(r.t * r.spin, r.t * 2, 0);
+    const pulse = 0.55 + 0.45 * Math.sin(r.t * (8 + s * 14));
+    r.v.ring.position.set(r.tx, 0.13, r.tz); r.v.ring.scale.setScalar(c.radius);
+    r.v.fill.position.set(r.tx, 0.12, r.tz); r.v.fill.scale.setScalar(c.radius * s);
+    r.v.ring.material.opacity = 0.5 + 0.5 * pulse;
+    if (s >= 1) {
+      r.done = true;
+      const hit = Math.abs(S.cx - r.tx) < c.radius + troopRadius() * 0.45;
+      if (hit && (S.phase === 'boss' || S.phase === 'horde')) { loseTroops(c.kills, r.tx, r.tz); flashScreen('rgba(255,60,30,0.9)', 0.35); }
+      S.shake = Math.max(S.shake, hit ? 0.6 : 0.3);
+      for (let k = 0; k < 18; k++) puff(r.tx + (Math.random() - 0.5) * 2.5, 0.3, r.tz + (Math.random() - 0.5) * 2.5, 1, [0.6, 0.55, 0.5], 2.0);
+      for (let k = 0; k < 14; k++) dust.emit(r.tx, 0.6, r.tz, (Math.random() - 0.5) * 10, 3 + Math.random() * 5, (Math.random() - 0.5) * 10, 0.5, 0.45, 0.4, 0.45, 0.9, 14);
+      releaseRock(r);
+    }
+  }
+  if (S.rocks.some((r) => r.done)) S.rocks = S.rocks.filter((r) => !r.done);
+}
+
+// ---------------------------------------------------------------- damage numbers on the boss and enemy mages (summed, a few per second)
+function updateDamageNumbers(dt) {
+  for (const t of [S.boss, ...S.casterList]) {
+    if (!t || !t.dmgAcc) continue;
+    t.dmgT = (t.dmgT || 0) + dt;
+    if (t.dmgT < 0.22) continue;
+    t.dmgT = 0;
+    const big = t.dmgAcc >= 60;
+    floaters.add(Math.round(t.dmgAcc).toLocaleString('da-DK'), { x: t.x + (Math.random() - 0.5) * (t === S.boss ? 2.4 : 1.2), y: (t === S.boss ? 4.6 : 2.6) + Math.random() * 0.6, z: t.z }, big ? 'dmg crit' : 'dmg', 0.65, 1.8);
+    t.dmgAcc = 0;
+  }
+}
 
 // ---------------------------------------------------------------- pickups (+1, +5, +99, weapon, rapid fire, bomb)
 function labelTexture(text, bg, fg = '#fff') {
@@ -194,32 +338,33 @@ function labelTexture(text, bg, fg = '#fff') {
   t.anisotropy = MAX_ANISO;
   return t;
 }
+// every pickup is a real prop from the packs, tinted by what it gives; the label floats above it
 const KIND_STYLE = {
-  plus1: { label: '+1', color: 0x2f7cf6, emissive: 0x0a3cff, stroke: '#0b2f8a', w: 4.6, h: 1.0 },
-  plus5: { label: '+5', color: 0x1d5fe8, emissive: 0x0a3cff, stroke: '#0b2f8a', w: 4.6, h: 1.4 },
-  plus99: { label: '+99', color: 0xf2a812, emissive: 0xb85a00, stroke: '#7a3a00', w: 4.6, h: 1.5 },
-  weapon: { label: 'VÅBEN +', color: 0x9b3df5, emissive: 0x5a12c9, stroke: '#3b0a7a', w: 3.8, h: 1.8 },
-  weapon2: { label: 'VÅBEN ++', color: 0xd4a017, emissive: 0x8a3cff, stroke: '#3b0a7a', w: 4.4, h: 2.0 },
-  altar: { label: 'OFR', color: 0x7a0e14, emissive: 0x5a0008, stroke: '#2a0004', w: 4.2, h: 2.2 },
-  rapid: { label: '2× SKUD', color: 0xff7a1a, emissive: 0xc43c00, stroke: '#6a2200', w: 3.8, h: 1.5 },
-  bomb: { label: 'BOMBE', color: 0xe0322b, emissive: 0x9a0c06, stroke: '#4a0503', w: 3.8, h: 1.5 },
+  plus1: { label: '+1', color: 0x2f7cf6, stroke: '#0b2f8a', model: 'box_large', scale: 0.85, tint: [0.55, 0.72, 1.15], glow: [0.0, 0.02, 0.08] },
+  plus5: { label: '+5', color: 0x1d5fe8, stroke: '#0b2f8a', model: 'crates_stacked', scale: 1.05, tint: [0.5, 0.68, 1.15], glow: [0.0, 0.02, 0.1] },
+  plus99: { label: '+99', color: 0xf2a812, stroke: '#7a3a00', model: 'crates_stacked', scale: 1.55, tint: [1.5, 1.15, 0.45], glow: [0.2, 0.1, 0] },
+  weapon: { label: 'VÅBEN +', color: 0x9b3df5, stroke: '#3b0a7a', model: 'chest', scale: 1.35, glow: [0.08, 0.02, 0.16] },
+  weapon2: { label: 'VÅBEN ++', color: 0xd4a017, stroke: '#3b0a7a', model: 'chest_gold', scale: 1.7, glow: [0.25, 0.15, 0.0] },
+  altar: { label: 'OFR', color: 0x7a0e14, stroke: '#2a0004', model: 'coffin', scale: 1.0 },
+  rapid: { label: '2× SKUD', color: 0xff7a1a, stroke: '#6a2200', model: 'keg_decorated', scale: 1.05, tint: [1.4, 0.85, 0.55] },
+  bomb: { label: 'BOMBE', color: 0xe0322b, stroke: '#4a0503', model: 'barrel_large', scale: 0.8, tint: [1.4, 0.45, 0.4] },
+  mult: { label: '×2', color: 0x4fc3ff, stroke: '#0b2f8a', model: 'arch_gate', scale: 1.45, tint: [0.75, 0.95, 1.5], glow: [0.0, 0.12, 0.3], big: true },
 };
 const kinds = {};
-for (const [name, st] of Object.entries(KIND_STYLE)) {
-  const max = name === 'plus1' ? 90 : 24;
-  const body = new THREE.InstancedMesh(
-    new RoundedBoxGeometry(st.w, st.h, 0.9, 3, 0.18),
-    new THREE.MeshStandardMaterial({ color: st.color, emissive: st.emissive, emissiveIntensity: 0.35, roughness: 0.32, metalness: 0.15 }),
-    max
-  );
-  body.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(max * 3).fill(1), 3);
-  const lw = Math.min(st.w * 0.95, 4.2);
-  const label = new THREE.InstancedMesh(new THREE.PlaneGeometry(lw, lw * 0.375), new THREE.MeshBasicMaterial({ map: labelTexture(name === 'altar' ? 'OFR ' + Math.round(levelConfig(1).altar.share * 100) + '%' : st.label, st.stroke, name === 'altar' ? '#ffd0d0' : '#fff'), transparent: true, depthWrite: false }), max);
-  body.castShadow = true;
-  body.frustumCulled = label.frustumCulled = false;
-  body.count = label.count = 0;
-  scene.add(body, label);
-  kinds[name] = { name, ...st, body, label, max };
+{
+  const nodes = {};
+  envG.scene.traverse((o) => { if (o.parent === envG.scene) nodes[o.name] = o; });
+  for (const [name, st] of Object.entries(KIND_STYLE)) {
+    const max = name === 'plus1' ? 90 : 24;
+    const set = new PropSet(scene, nodes[st.model], max, { tint: st.tint, emissive: st.glow });
+    const h = set.size.y * st.scale;
+    const lw = st.big ? 4.6 : name === 'plus1' ? 2.6 : 3.4;
+    const label = new THREE.InstancedMesh(new THREE.PlaneGeometry(lw, lw * 0.375), new THREE.MeshBasicMaterial({ map: labelTexture(st.label, st.stroke), transparent: true, depthWrite: false }), max);
+    label.frustumCulled = false;
+    label.count = 0;
+    scene.add(label);
+    kinds[name] = { name, ...st, set, label, max, h, lift: -set.min.y * st.scale };
+  }
 }
 
 // ---------------------------------------------------------------- stone prison (a hero encased in rock; chunks break off as it is shot)
@@ -230,9 +375,20 @@ const rockGeo = (() => {
   if (!geo) envG.scene.traverse((o) => { if (!geo && o.isMesh && /rock_single/.test((o.parent?.name || '') + o.name)) geo = o; });
   return geo;
 })();
-const heroTag = new THREE.InstancedMesh(new THREE.PlaneGeometry(3.2, 1.2), new THREE.MeshBasicMaterial({ map: labelTexture('BEFRI HELT', '#3b0a7a', '#e9d2ff'), transparent: true, depthWrite: false }), 6);
-heroTag.frustumCulled = false; heroTag.count = 0;
-scene.add(heroTag);
+// one floating name tag per hero kind ("FROSTMAGIKER" over a frozen frost mage)
+const heroTags = {};
+for (const [k, h] of Object.entries(HERO)) {
+  const t = new THREE.InstancedMesh(new THREE.PlaneGeometry(3.4, 1.27), new THREE.MeshBasicMaterial({ map: labelTexture(h.name, h.stroke, h.css), transparent: true, depthWrite: false }), 4);
+  t.frustumCulled = false; t.count = 0; t.n = 0;
+  scene.add(t);
+  heroTags[k] = t;
+}
+function pickHeroKind() {
+  const have = new Set(S.heroList.map((h) => h.kind));
+  const free = Object.keys(HERO).filter((k) => !have.has(k));
+  const pool = free.length ? free : Object.keys(HERO);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 const chunkMesh = new THREE.InstancedMesh(rockGeo.geometry, rockGeo.material.clone(), PRISON_CHUNKS * 6);
 chunkMesh.material.color = new THREE.Color(0.78, 0.76, 0.74);
 chunkMesh.castShadow = true; chunkMesh.receiveShadow = true; chunkMesh.frustumCulled = false; chunkMesh.count = 0;
@@ -334,10 +490,11 @@ function clearEntities() {
   for (const e of S?.enemies || []) e.crowd.release(e.i);
   if (S?.boss) bosses.release(S.boss.i);
   for (const c of S?.casterList || []) casters.release(c.i);
-  for (const h of S?.heroList || []) heroes.release(h.i);
+  for (const h of S?.heroList || []) heroCrowds[h.kind].release(h.i);
   for (const it of S?.items || []) if (it.statue !== undefined && it.statue >= 0) statues.release(it.statue);
   for (const w of S?.walls || []) { w.v.g.visible = false; wallPool.push(w.v); }
   for (const h of S?.hazards || []) releaseHazard(h);
+  for (const r of S?.rocks || []) releaseRock(r);
   bolts.list.length = 0;
 }
 
@@ -348,14 +505,14 @@ function startLevel(n, troopCount) {
   visibleAlive = 0;
   const cfg = levelConfig(n);
   S = {
-    level: n, cfg, t: 0, phase: 'horde', gold: S?.gold || 0, home: S?.home || 0, cx: 0, targetCx: 0,
-    count: troopCount, startCount: troopCount, troop: [], enemies: [], boss: null, items: [], walls: [],
+    level: n, cfg, t: 0, phase: 'horde', gold: 0, home: S?.home || 0, cx: 0, targetCx: 0,
+    count: troopCount, startCount: troopCount, settled: false, troop: [], enemies: [], boss: null, items: [], walls: [],
     heroList: [], fireballs: [], weapon: 0, rapid: 0, stats: { ev: {}, pop: {}, lane: [0, 0, 0] }, nextHorde: 0.4, kills: 0, lost: 0, shake: 0, endT: 0, bot: S?.bot || null,
     // each side lane plays its own shuffled deck of events, so the two sides never mirror each other
     // a scripted opening (popped from the end) guarantees an early weapon chest and +5s, then the decks are random
     // scripted opening (popped from the end, nearest first): soldiers on both sides and an early weapon chest, then random decks
     side: [{ lane: LEFT, deck: ['squad', 'plus5', 'plus1', 'plus1'], next: 0 }, { lane: RIGHT, deck: ['plus5', 'plus1', 'weapon', 'plus1'], next: 0 }],
-    hazards: [], nextHazard: 15, spent: {}, orbs: [], rowAcc: 0, hordeSpeed: 3, rush: 0, nextElite: cfg.eliteEvery, timeline: cfg.timeline.map((ev) => ({ ...ev })), casterList: [],
+    hazards: [], rocks: [], nextHazard: 15, spent: {}, orbs: [], rowAcc: 0, hordeSpeed: 3, rush: 0, nextElite: cfg.eliteEvery, timeline: cfg.timeline.map((ev) => ({ ...ev })), casterList: [],
   };
   const vis = Math.min(S.count, TROOP.visibleMax);
   for (let k = 0; k < vis; k++) spawnVisibleSoldier(S.cx + (Math.random() - 0.5) * 2, TROOP_Z + (Math.random() - 0.5) * 2, true);
@@ -421,6 +578,7 @@ function explodeBarrel(h, hitTroop) {
   for (let k = 0; k < 24; k++) puff(h.x + (Math.random() - 0.5) * 3, 0.3, h.z + (Math.random() - 0.5) * 3, 1, [0.3, 0.27, 0.25], 2.6);
   floaters.add(hitTroop ? 'BUM!' : 'BUM!', { x: h.x, y: 2.5, z: h.z }, 'orange big', 0.9, 2);
   S.shake = Math.max(S.shake, hitTroop ? 0.7 : 0.45);
+  flashScreen('rgba(255,150,40,0.95)', hitTroop ? 0.5 : 0.3);
 }
 
 function crumbleBoulder(h) {
@@ -483,7 +641,7 @@ function sideEvent(lane, deckState, z0 = SPAWN_Z) {
   S.stats.ev[ev] = (S.stats.ev[ev] || 0) + 1;
   const prog = Math.min(1, S.t / cfg.duration);
   switch (ev) {
-    case 'plus1': { const n = 8 + Math.floor(Math.random() * 7); for (let k = 0; k < n; k++) addItem('plus1', lane, z0 - k * 1.9, cfg.plus1Hp); return n * 1.9; }
+    case 'plus1': { const n = 6 + Math.floor(Math.random() * 6); for (let k = 0; k < n; k++) addItem('plus1', lane, z0 - k * 2.5, cfg.plus1Hp, { x: LANES[lane] + (k % 2 ? 0.9 : -0.9) }); return n * 2.5; }
     case 'plus5': { addItem('plus5', lane, z0, cfg.plus5Hp); addItem('plus5', lane, z0 - 3, cfg.plus5Hp); return 6; }
     case 'squad': { const n = Math.round(cfg.squadSize[0] + (cfg.squadSize[1] - cfg.squadSize[0]) * prog); const rows = Math.ceil(n / 6); for (let r = 0; r < rows; r++) spawnRow(lane, z0 - r * cfg.rowGap, Math.min(6, n - r * 6)); return rows * cfg.rowGap + 1; }
     case 'fort': { escort(lane, z0, cfg.escort); addWall(lane, z0 - 4, cfg.fortHp); addItem('plus99', lane, z0 - 6.4, cfg.plus99Hp); return 10; }
@@ -494,7 +652,7 @@ function sideEvent(lane, deckState, z0 = SPAWN_Z) {
       const st = statues.alloc();
       if (st < 0) return 4;
       statues.play(st, 'Idle', clock, 0.0001, Math.random());
-      addItem('prisoner', lane, z0, cfg.prisonHp, { statue: st, chunksLeft: PRISON_CHUNKS });
+      addItem('prisoner', lane, z0, cfg.prisonHp, { statue: st, chunksLeft: PRISON_CHUNKS, hero: pickHeroKind() });
       return 5;
     }
     case 'altar': {
@@ -509,6 +667,15 @@ function sideEvent(lane, deckState, z0 = SPAWN_Z) {
     }
     case 'barrels': { for (let k = 0; k < 2; k++) addHazard('barrel', lane, z0 - k * 5); return 10; }
     case 'rapid': { addItem('rapid', lane, z0, cfg.rapidHp); return 4; }
+    case 'mult': {
+      const n = Math.max(1, Math.min(S.count, S.cfg.mult.cap));
+      gainTroops(n);
+      floaters.add('×2  +' + n, p, 'gold big', 1.8, 3.2);
+      burst(it.x, 1.5, it.z, 70, [0.6, 1.6, 3.2], 11, 0.45);
+      flashScreen('rgba(120,200,255,0.95)', 0.5);
+      S.shake = Math.max(S.shake, 0.3);
+      break;
+    }
     case 'bomb': { addItem('bomb', lane, z0, cfg.bombHp); return 4; }
     default: return 4;
   }
@@ -599,7 +766,7 @@ function spawnEnemy(z, opts = {}) {
   const fast = opts.fast || 1;
   const e = {
     crowd, i, lane, type, x: opts.x ?? LANES[lane] + (Math.random() - 0.5) * (LANE_W - 1.2), z,
-    hp: T.hp * cfg.hpScale, pending: 0, scale: T.scale, warrior: type !== 'minion',
+    hp: type === 'minion' ? cfg.minionHp : T.hp * cfg.hpScale, pending: 0, scale: T.scale, warrior: type !== 'minion',
     speed: S.hordeSpeed * fast * (0.97 + Math.random() * 0.06), // one pace for everyone, so the mass stays packed
     state: 'run', t: 0, flash: 0, y: 0,
   };
@@ -663,7 +830,7 @@ let lastHud = -1;
 function updateHud(force) {
   if (!force && Math.abs(clock - lastHud) < 0.08) return;
   lastHud = clock;
-  goldEl.textContent = S.gold.toLocaleString('da-DK');
+  goldEl.textContent = (save.gold + (S.settled ? 0 : S.gold)).toLocaleString('da-DK');
   troopEl.querySelector('b').textContent = S.count.toLocaleString('da-DK');
   weaponEl.querySelector('b').textContent = WEAPON[S.weapon].name;
   weaponEl.style.setProperty('--wc', WEAPON[S.weapon].css);
@@ -677,8 +844,114 @@ function updateHud(force) {
 function showBanner(text, cls) { banner.className = cls || ''; banner.textContent = text; void banner.offsetWidth; banner.classList.add('show'); }
 function fmtTime(t) { return Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0'); }
 const startTroop = (n) => TROOP.start + (n - 1) * TROOP.startPerLevel;
-document.getElementById('again').addEventListener('click', () => startLevel(S.level, S.startCount));
-document.getElementById('next').addEventListener('click', () => { S.home += S.count; startLevel(S.level + 1, startTroop(S.level + 1)); });
+
+// ---------------------------------------------------------------- campaign: save, level map, base
+const SAVE_KEY = 'hordeforsvar.v1';
+function freshSave() { return { gold: 0, reserve: 0, maxLevel: 1, stars: {}, up: { barracks: 0, smith: 0, hall: 0 } }; }
+let save = freshSave();
+try { const raw = localStorage.getItem(SAVE_KEY); if (raw) save = { ...freshSave(), ...JSON.parse(raw) }; save.up = { ...freshSave().up, ...save.up }; } catch (e) { /* private mode: play without saving */ }
+function storeSave() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* ignore */ } }
+const reserveCap = () => BASE.barracks.levels[save.up.barracks];
+const fmt = (n) => Math.round(n).toLocaleString('da-DK');
+const starsHtml = (n) => [0, 1, 2].map((k) => `<span class="star${k < n ? ' on' : ''}">★</span>`).join('');
+
+/** Start a level from the campaign: the barracks send their soldiers along, the smith and the hero hall add their part. */
+function beginLevel(n) {
+  const fromReserve = Math.min(save.reserve, reserveCap());
+  save.reserve -= fromReserve;
+  storeSave();
+  startLevel(n, startTroop(n) + fromReserve);
+  S.fromReserve = fromReserve;
+  S.weapon = BASE.smith.levels[save.up.smith];
+  for (let k = 0; k < BASE.hall.levels[save.up.hall]; k++) freeHero(S.cx + (k - 0.5) * 3, TROOP_Z + 4, pickHeroKind());
+  mapEl.classList.remove('on'); baseEl.classList.remove('on'); document.body.classList.remove('inmenu');
+  if (fromReserve > 0) floaters.add('+' + fromReserve + ' fra kasernen', { x: S.cx, y: 2.6, z: TROOP_Z - 2 }, 'blue', 1.6, 2);
+  updateHud(true);
+}
+
+/** Bank the result of a finished level once: gold always, stars and survivors only for a win. */
+function settleLevel() {
+  if (S.settled || S.bot || SNAP) return;
+  S.settled = true;
+  save.gold += S.gold;
+  if (S.phase === 'won') {
+    const st = 1 + (S.count >= S.cfg.stars[0] ? 1 : 0) + (S.count >= S.cfg.stars[1] ? 1 : 0);
+    S.stars = st;
+    save.stars[S.level] = Math.max(save.stars[S.level] || 0, st);
+    save.maxLevel = Math.max(save.maxLevel, S.level + 1);
+    const before = save.reserve;
+    save.reserve = Math.min(reserveCap(), save.reserve + S.count);
+    S.housed = save.reserve - before;
+  }
+  storeSave();
+}
+
+const mapEl = document.getElementById('map'), baseEl = document.getElementById('base'), mapPath = document.getElementById('mapPath');
+function openMap() {
+  document.body.classList.add('inmenu');
+  overEl.classList.remove('on'); winEl.classList.remove('on'); baseEl.classList.remove('on');
+  S.phase = 'menu';
+  document.getElementById('mapGold').textContent = fmt(save.gold);
+  document.getElementById('mapReserve').textContent = fmt(save.reserve) + ' / ' + fmt(reserveCap());
+  // winding path from the bottom (level 1) upwards
+  const W = Math.min(380, mapPath.clientWidth || 340), stepY = 112, H = LEVEL_COUNT * stepY + 80;
+  const pts = [];
+  for (let k = 0; k < LEVEL_COUNT; k++) pts.push([W / 2 + Math.sin(k * 1.15) * (W * 0.3), H - 60 - k * stepY]);
+  let d = '';
+  pts.forEach(([x, y], k) => { d += (k ? ' L' : 'M') + x.toFixed(0) + ' ' + y.toFixed(0); });
+  let html = `<svg width="${W}" height="${H}"><path d="${d}" fill="none" stroke="rgba(255,220,150,0.55)" stroke-width="8" stroke-dasharray="2 16" stroke-linecap="round"/></svg>`;
+  pts.forEach(([x, y], k) => {
+    const n = k + 1, locked = n > save.maxLevel, cur = n === save.maxLevel;
+    html += `<button class="node${locked ? ' locked' : ''}${cur ? ' current' : ''}" data-n="${n}" style="left:${x}px;top:${y}px" ${locked ? 'disabled' : ''} aria-label="Bane ${n}">${locked ? '🔒' : n}<span class="stars">${starsHtml(save.stars[n] || 0)}</span></button>`;
+  });
+  mapPath.innerHTML = `<div style="position:relative;height:${H}px">${html}</div>`;
+  document.getElementById('playNext').textContent = 'Spil bane ' + save.maxLevel;
+  mapEl.classList.add('on');
+  // scroll so the current level is in view
+  requestAnimationFrame(() => { mapPath.scrollTop = Math.max(0, pts[Math.min(LEVEL_COUNT, save.maxLevel) - 1][1] - mapPath.clientHeight * 0.6); });
+}
+mapPath.addEventListener('click', (e) => { const b = e.target.closest('.node'); if (b && !b.disabled) beginLevel(+b.dataset.n); });
+document.getElementById('playNext').addEventListener('click', () => beginLevel(save.maxLevel));
+
+const UP_ICON = { barracks: '🛡️', smith: '⚒️', hall: '✨' };
+function upNow(key, lv) {
+  const v = BASE[key].levels[lv];
+  if (key === 'barracks') return 'Plads til ' + v + ' soldater';
+  if (key === 'smith') return 'Starter med ' + WEAPON[v].name;
+  return v === 0 ? 'Ingen helte fra start' : v + (v === 1 ? ' helt' : ' helte') + ' fra start';
+}
+function openBase() {
+  document.body.classList.add('inmenu');
+  overEl.classList.remove('on'); winEl.classList.remove('on'); mapEl.classList.remove('on');
+  S.phase = 'menu';
+  document.getElementById('baseGold').textContent = fmt(save.gold);
+  document.getElementById('baseReserve').textContent = fmt(save.reserve) + ' / ' + fmt(reserveCap());
+  let html = '';
+  for (const key of Object.keys(BASE)) {
+    const u = BASE[key], lv = save.up[key], max = lv >= u.levels.length - 1;
+    const cost = max ? 0 : u.cost[lv + 1];
+    const pips = u.levels.slice(1).map((_, k) => `<i class="${k < lv ? 'on' : ''}"></i>`).join('');
+    html += `<div class="up"><div class="ico">${UP_ICON[key]}</div><div class="nm">${u.name}</div>
+      <button class="btn gold" data-up="${key}" ${max || save.gold < cost ? 'disabled' : ''}>${max ? 'MAX' : '<span class="coin"></span>' + fmt(cost)}</button>
+      <div class="what">${u.what}</div><div class="now">${upNow(key, lv)}${max ? '' : ' → ' + upNow(key, lv + 1).replace(/^Plads til |^Starter med /, '')}</div><div class="pips">${pips}</div></div>`;
+  }
+  document.getElementById('baseList').innerHTML = html;
+  baseEl.classList.add('on');
+}
+document.getElementById('baseList').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-up]');
+  if (!b || b.disabled) return;
+  const key = b.dataset.up, u = BASE[key], lv = save.up[key];
+  if (lv >= u.levels.length - 1 || save.gold < u.cost[lv + 1]) return;
+  save.gold -= u.cost[lv + 1]; save.up[key] = lv + 1; storeSave();
+  openBase();
+});
+document.getElementById('openBase').addEventListener('click', openBase);
+document.getElementById('baseBack').addEventListener('click', openMap);
+document.getElementById('toBase').addEventListener('click', openBase);
+document.getElementById('toMap').addEventListener('click', openMap);
+document.getElementById('again').addEventListener('click', () => beginLevel(S.level));
+document.getElementById('next').addEventListener('click', () => beginLevel(S.level + 1));
 
 // ---------------------------------------------------------------- shooting
 const laneTargets = [[], [], []];
@@ -760,14 +1033,14 @@ function damage(t, dmg, hx, hy, hz) {
   }
   if (t.caster) {
     if (t.state === 'dead') return;
-    t.hp -= dmg; t.flash = 0.08;
+    t.hp -= dmg; t.flash = 0.08; t.dmgAcc = (t.dmgAcc || 0) + dmg;
     sparks(hx, hy, hz + 0.3, 0.8, 0.4, 1.0, 2);
     if (t.hp <= 0) killCaster(t);
     return;
   }
   if (t === S.boss) {
     if (!S.boss || S.boss.state === 'dead') return;
-    S.boss.hp -= dmg; S.boss.flash = 0.07;
+    S.boss.hp -= dmg; S.boss.flash = 0.07; S.boss.dmgAcc = (S.boss.dmgAcc || 0) + dmg;
     sparks(hx, hy, hz + 0.3, w.flash[0] / 2.6, w.flash[1] / 2.6, w.flash[2] / 2.6, 2);
     if (S.boss.hp <= 0) killBoss();
     return;
@@ -820,7 +1093,7 @@ function burst(x, y, z, n, col, speed = 8, size = 0.35) {
 
 function killEnemy(e, reward) {
   e.state = 'dead'; e.t = 0;
-  e.kb = 1.5 + Math.random() * 1.5; // knock-back speed
+  e.kb = 3 + Math.random() * 3; // knock-back speed: they are thrown back by the hit
   e.crowd.play(e.i, 'Death_C_Skeletons', clock, 1.15);
   if (reward) {
     const T = ENEMY[e.type];
@@ -829,6 +1102,7 @@ function killEnemy(e, reward) {
       gainTroops(T.troops);
       floaters.add('+' + T.troops, { x: e.x, y: 2.4, z: e.z }, 'gold big', 1.2, 2.6);
       burst(e.x, 1.2, e.z, 40, [2.6, 2.0, 0.5], 9, 0.4);
+      flashScreen('rgba(255,210,90,0.9)', 0.3);
     }
   }
   if (Math.random() < 0.5) puff(e.x, 0.3, e.z, 1, [0.55, 0.5, 0.46], 0.8);
@@ -865,8 +1139,8 @@ function popItem(it) {
       statues.release(it.statue); it.statue = -1;
       for (let k = 0; k < 30; k++) puff(it.x + (Math.random() - 0.5) * 1.5, 0.3 + Math.random() * 1.5, it.z, 1, [0.62, 0.6, 0.58], 1.4);
       burst(it.x, 1.0, it.z, 60, [2.2, 1.0, 3.2], 9, 0.4);
-      floaters.add('HELT BEFRIET!', p, 'purple big', 1.8, 3);
-      freeHero(it.x, it.z);
+      floaters.add(HERO[it.hero || 'fire'].name + '!', p, 'purple big', 1.8, 3);
+      freeHero(it.x, it.z, it.hero || 'fire');
       S.shake = Math.max(S.shake, 0.4);
       break;
     }
@@ -933,6 +1207,7 @@ function killBoss() {
   bosses.play(b.i, 'Death_C_Skeletons', clock, 0.9);
   S.gold += S.cfg.gold.boss;
   S.shake = 0.9;
+  flashScreen('rgba(255,240,200,1)', 0.75);
   floaters.add('+' + S.cfg.gold.boss + ' guld', { x: b.x, y: 4, z: b.z }, 'gold big', 1.6, 3);
   for (let k = 0; k < 90; k++) glow.emit(b.x + (Math.random() - 0.5) * 2, 1 + Math.random() * 3, b.z, (Math.random() - 0.5) * 14, 2 + Math.random() * 10, (Math.random() - 0.5) * 10, 2.6, 0.6, 0.2, 0.45, 0.9, 10);
   for (let k = 0; k < 30; k++) puff(b.x, 0.5, b.z, 1, [0.7, 0.66, 0.6], 2.2);
@@ -948,6 +1223,7 @@ function killCaster(c) {
   S.gold += r.gold; gainTroops(r.troops);
   floaters.add('+' + r.troops, { x: c.x, y: 3, z: c.z }, 'gold big', 1.5, 3);
   burst(c.x, 1.5, c.z, 70, [1.8, 0.6, 3.0], 11, 0.45);
+  flashScreen('rgba(190,120,255,0.95)', 0.45);
   S.shake = Math.max(S.shake, 0.4);
 }
 
@@ -1020,11 +1296,12 @@ function crackPrison(it) {
   }
 }
 
-function freeHero(x, z) {
-  const i = heroes.alloc();
+function freeHero(x, z, kind = 'fire') {
+  const crowd = heroCrowds[kind];
+  const i = crowd.alloc();
   if (i < 0) return;
-  const h = { i, x, z, state: 'run', z0: 0, yaw: Math.PI };
-  heroes.play(i, 'Running_A', clock, 1.2, 0);
+  const h = { i, kind, crowd, x, z, state: 'run', z0: 0, yaw: Math.PI };
+  crowd.play(i, 'Running_A', clock, 1.2, 0);
   S.heroList.push(h);
 }
 const CAST_LEN = mageBaked.clips['Spellcast_Shoot'].duration;
@@ -1038,11 +1315,21 @@ function heroTarget(h) {
   return pickTarget(laneOf(h.x), h.z);
 }
 function castFireball(h) {
+  const c = HERO[h.kind].col;
+  if (h.kind === 'heal') {
+    // the healer brings fallen soldiers back to their feet
+    const n = S.cfg.heroHeal;
+    gainTroops(n);
+    floaters.add('+' + n, { x: S.cx, y: 2.2, z: TROOP_Z }, 'green', 0.9, 1.6);
+    for (let k = 0; k < 24; k++) glow.emit(S.cx + (Math.random() - 0.5) * troopRadius() * 2, 0.3, TROOP_Z + (Math.random() - 0.5) * troopRadius() * 1.4, 0, 2 + Math.random() * 2, 0, c[0], c[1], c[2], 0.35, 0.8, -1);
+    glow.emit(h.x, 1.8, h.z, 0, 0.4, 0, c[0], c[1], c[2], 1.4, 0.2);
+    return;
+  }
   const t = heroTarget(h);
   if (!t) return;
-  const dmg = S.cfg.heroDamage * WEAPON[S.weapon].mul;
-  S.fireballs.push({ x: h.x, y: 1.5, z: h.z - 0.6, tx: t.x, ty: hitHeight(t), tz: t.z + 0.4, t: 0, dur: Math.max(0.15, Math.hypot(t.x - h.x, t.z - h.z) / 42), target: t, dmg });
-  glow.emit(h.x, 1.6, h.z - 0.6, 0, 0.5, 0, 3.0, 1.2, 0.4, 1.4, 0.15);
+  const dmg = S.cfg.heroDamage * WEAPON[S.weapon].mul * (h.kind === 'frost' ? 0.5 : 1);
+  S.fireballs.push({ kind: h.kind, x: h.x, y: 1.5, z: h.z - 0.6, tx: t.x, ty: hitHeight(t), tz: t.z + 0.4, t: 0, dur: Math.max(0.15, Math.hypot(t.x - h.x, t.z - h.z) / 42), target: t, dmg });
+  glow.emit(h.x, 1.6, h.z - 0.6, 0, 0.5, 0, c[0], c[1], c[2], 1.4, 0.15);
 }
 function updateFireballs(dt) {
   let w = 0;
@@ -1050,18 +1337,24 @@ function updateFireballs(dt) {
     f.t += dt;
     const k = Math.min(1, f.t / f.dur);
     const x = f.x + (f.tx - f.x) * k, z = f.z + (f.tz - f.z) * k, y = f.y + (f.ty - f.y) * k + Math.sin(k * Math.PI) * 1.4;
-    glow.emit(x, y, z, 0, 0, 0, 3.2, 1.3, 0.35, 1.2, 0.12);
-    glow.emit(x + (Math.random() - 0.5) * 0.3, y, z + 0.3, (Math.random() - 0.5) * 1.5, 0.8, 1.5, 2.6, 0.7, 0.15, 0.6, 0.3);
+    const c = HERO[f.kind].col;
+    glow.emit(x, y, z, 0, 0, 0, c[0], c[1], c[2], 1.2, 0.12);
+    glow.emit(x + (Math.random() - 0.5) * 0.3, y, z + 0.3, (Math.random() - 0.5) * 1.5, 0.8, 1.5, c[0] * 0.8, c[1] * 0.8, c[2] * 0.8, 0.6, 0.3);
     if (k < 1) { S.fireballs[w++] = f; continue; }
     // impact: area damage around the hit point
-    const R = S.cfg.heroRadius;
+    const R = S.cfg.heroRadius * (f.kind === 'frost' ? 1.5 : 1);
     for (const e of S.enemies) {
       if (e.state !== 'run') continue;
-      if ((e.x - f.tx) ** 2 + (e.z - f.tz) ** 2 < R * R) { e.hp -= f.dmg; e.flash = 0.1; if (e.hp <= 0) killEnemy(e, true); }
+      if ((e.x - f.tx) ** 2 + (e.z - f.tz) ** 2 < R * R) {
+        e.hp -= f.dmg; e.flash = 0.1;
+        if (f.kind === 'frost') e.slow = S.cfg.frostSlow; // frozen: crawls for a few seconds
+        if (e.hp <= 0) killEnemy(e, true);
+      }
     }
     const t = f.target;
     if (t && (t.kind || t.wall || t === S.boss)) damage(t, f.dmg, f.tx, f.ty, f.tz);
-    for (let n = 0; n < 26; n++) glow.emit(f.tx, f.ty, f.tz, (Math.random() - 0.5) * 9, 1 + Math.random() * 6, (Math.random() - 0.5) * 9, 3.2, 1.1 + Math.random(), 0.25, 0.5, 0.45, 9);
+    const ci = HERO[f.kind].col;
+    for (let n = 0; n < 26; n++) glow.emit(f.tx, f.ty, f.tz, (Math.random() - 0.5) * 9, 1 + Math.random() * 6, (Math.random() - 0.5) * 9, ci[0], ci[1] * (0.8 + Math.random() * 0.4), ci[2], 0.5, 0.45, 9);
     for (let n = 0; n < 4; n++) puff(f.tx, 0.2, f.tz, 1, [0.32, 0.28, 0.26], 1.6);
     S.shake = Math.max(S.shake, 0.12);
   }
@@ -1078,21 +1371,22 @@ function updateHeroes(dt, playing) {
       const m = Math.min(d, 12 * dt);
       if (d > 0.01) { h.x += dx / d * m; h.z += dz / d * m; }
       h.yaw = d > 0.3 ? Math.atan2(dx, dz) : Math.PI;
-      if (d < 0.3) { h.state = 'cast'; h.z0 = clock; heroes.play(h.i, 'Spellcast_Shoot', clock, 1, 0); }
+      if (d < 0.3) { h.state = 'cast'; h.z0 = clock; h.crowd.play(h.i, 'Spellcast_Shoot', clock, h.kind === 'heal' ? 0.5 : 1, 0); }
     } else {
       h.x = hx; h.z = hz; h.yaw = Math.PI;
       if (playing) {
-        const ph = ((clock - h.z0) / CAST_LEN) % 1, prev = ((clock - dt - h.z0) / CAST_LEN) % 1;
+        const L = CAST_LEN * (h.kind === 'heal' ? 2 : 1);
+        const ph = ((clock - h.z0) / L) % 1, prev = ((clock - dt - h.z0) / L) % 1;
         if (prev < CAST_RELEASE && ph >= CAST_RELEASE) castFireball(h);
-      } else if (h.state !== 'cheer' && S.phase === 'won') { h.state = 'cheer'; heroes.play(h.i, 'Cheer', clock, 1, 0); }
+      } else if (h.state !== 'cheer' && S.phase === 'won') { h.state = 'cheer'; h.crowd.play(h.i, 'Cheer', clock, 1, 0); }
     }
-    heroes.setTransform(h.i, h.x, 0, h.z, h.yaw, 1.1);
+    h.crowd.setTransform(h.i, h.x, 0, h.z, h.yaw, 1.1);
     blob(h.x, h.z, 1.1);
   });
 }
 
 // ---------------------------------------------------------------- bots (balance testing only)
-const VALUE = { plus1: 1, plus5: 5, plus99: 99, weapon: 400, weapon2: 900, prisoner: 700, rapid: 60, bomb: 40, altar: 500 };
+const VALUE = { mult: 500, plus1: 1, plus5: 5, plus99: 99, weapon: 400, weapon2: 900, prisoner: 700, rapid: 60, bomb: 40, altar: 500 };
 /** A greedy player: defends the lane with the most pressure, otherwise farms the lane with the best reward per health. */
 function botTarget(style) {
   if (style === 'middle') return LANES[MID];
@@ -1107,6 +1401,7 @@ function botTarget(style) {
   // dodge: a hazard about to reach the camp in a lane makes that lane off-limits
   const avoid = [false, false, false];
   for (const h of S.hazards) if (h.alive && h.z > TROOP_Z - 16) avoid[laneOf(h.x)] = true;
+  if (style !== 'nododge') for (const r of S.rocks) if (r.t > 0.3) avoid[laneOf(r.tx)] = true;
   const worst0 = threat.indexOf(Math.max(...threat));
   const worst = avoid[worst0] ? [LEFT, MID, RIGHT].filter((L) => !avoid[L]).sort((a, b) => threat[b] - threat[a])[0] ?? worst0 : worst0;
   for (const L of [LEFT, MID, RIGHT]) if (avoid[L]) reward[L] = 0;
@@ -1125,6 +1420,7 @@ function botTarget(style) {
 function update(dt) {
   clock += dt;
   setVatTime(clock);
+  if (S.phase === 'menu') { glow.update(dt); dust.update(dt); updateFires(dt); return; } // map/base on top: the battlefield waits
   const playing = S.phase === 'horde' || S.phase === 'boss';
   if (playing) S.t += dt;
   blobN = 0;
@@ -1156,6 +1452,7 @@ function update(dt) {
       ev.done = true;
       if (ev.type === 'rush') { S.rush = cfg.rush.time; showBanner('STORMLØB!', 'red'); }
       if (ev.type === 'caster') spawnCaster(ev.lane ?? (Math.random() < 0.5 ? LEFT : RIGHT));
+      if (ev.type === 'mult') { addItem('mult', MID, SPAWN_Z, cfg.mult.hp); showBanner('×2 PORT!', 'blue'); }
     }
     // a new row enters every time the mass has advanced one row gap: the lane never empties behind it
     S.rowAcc += S.hordeSpeed * dt;
@@ -1237,14 +1534,15 @@ function update(dt) {
   for (const e of S.enemies) {
     e.t += dt;
     if (e.state === 'dead') {
-      if (e.kb > 0) { e.z -= e.kb * dt; e.kb = Math.max(0, e.kb - dt * 6); }
+      if (e.kb > 0) { e.z -= e.kb * dt; e.kb = Math.max(0, e.kb - dt * 7); }
       if (e.t > 1.6) e.y -= dt * 1.2;
       if (e.t > 2.6) e.remove = true;
       e.crowd.setTransform(e.i, e.x, e.y, e.z, 0, e.scale);
       if (e.flash > 0) { e.flash -= dt; e.crowd.flash(e.i, Math.max(0, e.flash) * 25); }
       continue;
     }
-    e.z += e.speed * dt;
+    if (e.slow > 0) { e.slow -= dt; e.flash = Math.max(e.flash, 0.02); }
+    e.z += e.speed * (e.slow > 0 ? 0.35 : 1) * dt;
     let yaw = 0;
     if (e.z > LANE_END_Z) { // out of the lanes: charge the troop
       const tx = S.cx + THREE.MathUtils.clamp(e.x - S.cx, -troopRadius(), troopRadius());
@@ -1274,7 +1572,13 @@ function update(dt) {
       if (b.t > 2.2) b.y -= dt * 1.5;
       if (b.t > 3.5) { bosses.release(b.i); S.boss = null; }
     } else if (b.state === 'walk') {
-      b.z += b.speed * dt;
+      // now and then the boss stops to hurl a rock at the troop
+      b.throwT = (b.throwT ?? 2) - dt;
+      if (b.throwAnim > 0) {
+        b.throwAnim -= dt;
+        if (b.throwAnim <= 0) bosses.play(b.i, 'Walking_D_Skeletons', clock, 0.95);
+      } else b.z += b.speed * dt;
+      if (b.throwT <= 0 && b.z > SPAWN_Z + 8 && b.z < front - 8) { b.throwT = cfg.bossThrow.every * (0.8 + Math.random() * 0.4); throwRock(b); }
       if (b.z > LANE_END_Z) b.x += THREE.MathUtils.clamp(S.cx - b.x, -2.5 * dt, 2.5 * dt);
       if (b.z > front - 1.8) { b.state = 'attack'; b.atk = 0.55; bosses.play(b.i, '2H_Melee_Attack_Chop', clock, 1.1); }
     } else if (b.state === 'attack') {
@@ -1299,6 +1603,10 @@ function update(dt) {
   updateCasters(dt, playing);
   updateHazards(dt, playing);
   updateFireballs(dt);
+  updateRocks(dt);
+  updateBearer(dt);
+  updateFires(dt);
+  updateDamageNumbers(dt);
 
   // ---- pickups and walls ride the conveyor; walls hold back whatever is behind them in their lane
   updateConveyor(dt);
@@ -1310,7 +1618,7 @@ function update(dt) {
     if (S.endT >= 1.6 && S.endT - dt < 1.6 && !S.bot) showEnd();
   }
 
-  soldiers.commit(); minions.commit(); warriors.commit(); bosses.commit(); heroes.commit(); statues.commit(); elites.commit(); casters.commit();
+  soldiers.commit(); minions.commit(); warriors.commit(); bosses.commit(); heroCrowds.fire.commit(); heroCrowds.frost.commit(); heroCrowds.heal.commit(); bearerCrowd.commit(); statues.commit(); elites.commit(); casters.commit();
   blobs.count = blobN;
   blobs.instanceMatrix.needsUpdate = true;
   glow.update(dt); dust.update(dt); bolts.update(dt);
@@ -1318,15 +1626,20 @@ function update(dt) {
 }
 
 function showEnd() {
+  settleLevel();
   if (S.phase === 'won') {
+    document.getElementById('winStars').innerHTML = starsHtml(S.stars || 1);
+    document.getElementById('winNote').textContent = (S.housed || 0) > 0
+      ? fmt(S.housed) + ' soldater venter i kasernen (plads til ' + fmt(reserveCap()) + '). Byg den større i basen.'
+      : 'Kasernen er fuld (' + fmt(reserveCap()) + '). Byg den større i basen.';
     document.getElementById('winTitle').textContent = 'Bane ' + S.level + ' klaret!';
     document.getElementById('winTroop').textContent = S.count.toLocaleString('da-DK');
-    document.getElementById('winGold').textContent = S.gold.toLocaleString('da-DK');
+    document.getElementById('winGold').textContent = '+' + fmt(S.gold);
     document.getElementById('winKills').textContent = S.kills.toLocaleString('da-DK');
     winEl.classList.add('on');
   } else {
     document.getElementById('overProgress').textContent = Math.round(Math.min(1, S.t / S.cfg.duration) * 100) + ' %';
-    document.getElementById('overGold').textContent = S.gold.toLocaleString('da-DK');
+    document.getElementById('overGold').textContent = '+' + fmt(S.gold);
     document.getElementById('overKills').textContent = S.kills.toLocaleString('da-DK');
     document.getElementById('overTime').textContent = fmtTime(S.t);
     overEl.classList.add('on');
@@ -1347,14 +1660,15 @@ function updateConveyor(dt) {
     drawWallHp(w.v, w.hp);
   }
   S.walls = S.walls.filter((w) => w.alive);
-  for (const kd of Object.values(kinds)) kd.n = 0;
-  let chunkN = 0, tagN = 0;
+  for (const kd of Object.values(kinds)) { kd.n = 0; kd.set.begin(); }
+  let chunkN = 0;
+  for (const t of Object.values(heroTags)) t.n = 0;
   for (const it of S.items) {
     if (!it.alive) { it.pop += dt; continue; }
     // never pass through a standing wall in the same lane
     let limit = Infinity;
     for (const w of S.walls) if (w.lane === it.lane && w.z > it.z) limit = Math.min(limit, w.z - 1.6);
-    it.z = Math.min(limit, it.z + CONVEYOR * dt);
+    it.z = Math.min(limit, it.z + (it.kind === 'mult' ? S.hordeSpeed * 0.9 : CONVEYOR) * dt); // the ×2 gate rides inside the horde
     if (it.z > exitZ) { it.alive = false; it.pop = 1; if (it.statue >= 0 && it.statue !== undefined) { statues.release(it.statue); it.statue = -1; } puff(it.x, 0.4, it.z, 5, [0.6, 0.7, 0.9]); continue; }
     if (it.flash > 0) it.flash -= dt;
     if (it.kind === 'prisoner') {
@@ -1369,33 +1683,31 @@ function updateConveyor(dt) {
       }
       _p.set(it.x, 2.75 + Math.sin(clock * 3) * 0.1, it.z); _s.set(1, 1, 1);
       _m.compose(_p, _labelQ, _s);
-      heroTag.setMatrixAt(tagN++, _m);
+      const tag = heroTags[it.hero || 'fire']; tag.setMatrixAt(tag.n++, _m);
       blob(it.x, it.z, 1.6);
       continue;
     }
     const kd = kinds[it.kind];
     if (kd.n >= kd.max) continue;
-    const bump = it.flash > 0 ? 1.06 : 1;
-    const bob = it.kind === 'plus1' || it.kind === 'plus5' || it.kind === 'plus99' ? 0 : Math.sin(clock * 3 + it.z) * 0.12;
-    _p.set(it.x, kd.h / 2 + 0.1 + bob, it.z); _s.set(bump, bump, bump);
+    const bump = (it.flash > 0 ? 1.07 : 1) * kd.scale;
+    const bob = /weapon|rapid|bomb/.test(it.kind) ? Math.abs(Math.sin(clock * 3 + it.z)) * 0.25 : 0;
+    _p.set(it.x, kd.lift + 0.05 + bob, it.z); _s.set(bump, bump, bump);
     _m.compose(_p, _q.identity(), _s);
-    kd.body.setMatrixAt(kd.n, _m);
-    const f = it.flash > 0 ? 2.6 : 1;
-    kd.body.instanceColor.setXYZ(kd.n, f, f, f);
-    _p.set(it.x, kd.h + 0.16 + bob, it.z + 0.1);
+    kd.set.add(_m, it.flash > 0 ? 2.4 : 1);
+    if (kd.big) _p.set(it.x, kd.h * 0.5, it.z + 0.9); // ×2 hangs in front of the gate bars
+    else _p.set(it.x, kd.h + 0.55 + bob, it.z + 0.1);
     _m.compose(_p, _labelQ, _s);
     kd.label.setMatrixAt(kd.n, _m);
     kd.n++;
   }
   chunkMesh.count = chunkN;
-  heroTag.count = tagN;
-  heroTag.instanceMatrix.needsUpdate = true;
+  for (const t of Object.values(heroTags)) { t.count = t.n; t.instanceMatrix.needsUpdate = true; }
   chunkMesh.instanceMatrix.needsUpdate = true;
   S.items = S.items.filter((it) => it.alive || it.pop < 0.5);
   for (const kd of Object.values(kinds)) {
-    kd.body.count = kd.label.count = kd.n;
-    kd.body.instanceMatrix.needsUpdate = kd.label.instanceMatrix.needsUpdate = true;
-    kd.body.instanceColor.needsUpdate = true;
+    kd.set.end();
+    kd.label.count = kd.n;
+    kd.label.instanceMatrix.needsUpdate = true;
   }
 }
 
@@ -1409,12 +1721,19 @@ function updateCamera(dt) {
   camera.lookAt(camTarget.x + S.cx * 0.45, camTarget.y, camTarget.z);
   if (params.has('cam')) { const c = params.get('cam').split(',').map(Number); camera.position.set(c[0], c[1], c[2]); camera.lookAt(c[3], c[4], c[5]); }
   camera.updateMatrixWorld();
-  troopLabelPos.set(S.cx, 1.9, TROOP_Z - troopRadius() * 0.7 - 0.9).project(camera);
+  troopLabelPos.set(S.cx, 3.9, TROOP_Z - troopRadius() * 0.72 - 1.0).project(camera);
   troopEl.style.transform = `translate(${(troopLabelPos.x * 0.5 + 0.5) * window.innerWidth}px, ${(-troopLabelPos.y * 0.5 + 0.5) * window.innerHeight}px) translate(-50%, -100%)`;
 }
 
 resize();
-startLevel(1, params.has('troop') ? +params.get('troop') : SNAP ? 60 : TROOP.start);
+const DIRECT = SNAP || params.has('bot') || params.has('troop') || params.has('spawn') || params.has('hz');
+if (DIRECT) startLevel(+(params.get('level') || 1), params.has('troop') ? +params.get('troop') : SNAP ? 60 : TROOP.start);
+else { startLevel(Math.min(save.maxLevel, 99), startTroop(save.maxLevel)); update(0); openMap(); }
+if (params.has('boss')) { S.t = S.cfg.duration - 0.05; for (const ev of S.timeline) ev.done = true; } // tests: jump to the boss
+if (params.has('mult')) addItem('mult', MID, -24, S.cfg.mult.hp);
+if (params.has('heroes')) for (const k of Object.keys(HERO)) freeHero(S.cx, TROOP_Z + 3, k);
+if (params.get('menu') === 'map') { update(0); openMap(); }
+if (params.get('menu') === 'base') { if (params.has('gold')) save.gold = +params.get('gold'); update(0); openBase(); }
 if (params.has('bot')) S.bot = params.get('bot'); // screenshots of a bot-played game
 if (params.has('hz')) { addHazard(params.get('hz'), MID, -26); addHazard('barrel', LEFT, -34); }
 if (params.has('spawn')) { S.side[1].deck.push(params.get('spawn')); S.side[1].next = 0; } // force a side-lane event (tests)

@@ -6,6 +6,7 @@ src/main.js           opsætning (renderer, lys, post-processing), spillogik, HU
 src/vat.js            bager glTF-animationer til teksturer + instanced "Crowd"-pulje
 src/world.js          statisk miljø: spor, gårdsplads, kirkegård, ruiner, skov, himmel
 src/fx.js             partikler, armbrøstbolte, flydende tal
+src/props.js          PropSet: instanced kopier af en statisk model (kister, kasser, porte)
 src/levels.js         al balance: banelængde, fjendetal, liv, mur, boss, guld
 tools/sim.py          spiller hele baner headless med bots og printer resultatet
 index.html            HUD og styling
@@ -33,3 +34,14 @@ Ved indlæsning afspilles hver valgt animation på CPU'en, og hver vertex' posit
 - `pierce()` sender overskydende skade videre til de nærmeste skeletter bag målet.
 - Banens `timeline`: stormløb (`S.rush`) og skeletmagikere (`spawnCaster`, `updateCasters`, kugler i `S.orbs`).
 - `budget` i levels.js begrænser fæstninger, våbenkister og fanger pr. bane (`S.spent`).
+
+## Runde 8: helte, boss, kampagne
+- Tre heltetyper (`HERO` i main.js): ILDMAGIKER (ildkugle), FROSTMAGIKER (bremser fjender, `e.slow`), HELBREDER (`heroHeal` soldater pr. besværgelse). Hver har sin egen `Crowd` i `heroCrowds`; en fange bærer `it.hero`.
+- ×2-porten (`mult`) kommer via `timeline` i midtersporet og kører med hordens fart; giver `min(antal, mult.cap)` soldater.
+- Bossen kaster sten (`throwRock`, `S.rocks`); en rød ring (tegnet oven på alt) viser nedslaget `bossThrow.warn` sekunder før.
+- Fanebærer (ridder + flag) står foran truppen; soldaterne får en svag kantglød i våbnets farve (`troopRim`).
+- Ild og røg: `updateFires()` udsender partikler ved `world.fires` (fakler, bål) og `world.smokes`.
+- Skærmblink (`flashScreen`) ved store drab; skadetal på boss og skeletmagikere (`updateDamageNumbers`).
+- Kampagne: `save` i localStorage (`hordeforsvar.v1`: guld, kaserne-reserve, låst op til, stjerner, opgraderinger). `beginLevel(n)` anvender basen (reserve, startvåben, startHelte) og kalder `startLevel`; `settleLevel()` bogfører resultatet én gang. Fasen `menu` fryser slagmarken bag kort/base.
+- `BASE` og `LEVEL_COUNT` i levels.js; stjerner efter overlevende (`stars`).
+- Test-parametre: `snap` (direkte i spillet, ingen menu), `level=`, `boss`, `mult`, `heroes`, `menu=map|base`, `gold=`.

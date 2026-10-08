@@ -28,6 +28,9 @@ const characters = [
   // enemy hero: the skeleton mage that stops in the lane and blasts the troop from range
   { src: `${SK}/Skeleton_Mage.glb`, out: 'skeleton_mage.glb',
     anims: ['Walking_D_Skeletons', 'Spellcast_Shoot', 'Death_C_Skeletons', 'Idle'], drop: [] },
+  // banner bearer at the front of the troop
+  { src: `${AD}/Knight.glb`, out: 'knight.glb', anims: ['Idle', 'Running_A', 'Cheer'],
+    drop: ['1H_Sword_Offhand', 'Badge_Shield', 'Rectangle_Shield', 'Spike_Shield', '2H_Sword'] },
   // hero: the mage freed from the stone prison
   { src: `${AD}/Mage.glb`, out: 'mage.glb',
     anims: ['Spellcast_Shoot', 'Idle', 'Running_A', 'Cheer', 'Death_A'],
@@ -82,8 +85,9 @@ const envList = [
     .map((n) => [n, `${HW}/${n}.gltf`]),
   ...['wall', 'wall_broken', 'wall_half', 'wall_cracked', 'wall_pillar', 'rubble_large', 'rubble_half', 'pillar', 'column',
     'barrier', 'barrier_column', 'barrier_half', 'floor_tile_large', 'floor_tile_large_rocks', 'floor_tile_small_broken_A',
-    'torch_lit', 'banner_patternA_red', 'banner_thin_blue', 'barrel_large', 'crates_stacked', 'box_large', 'sword_shield_broken']
+    'torch_lit', 'banner_patternA_red', 'banner_thin_blue', 'barrel_large', 'crates_stacked', 'box_large', 'sword_shield_broken', 'box_small', 'keg_decorated', 'coin_stack_large']
     .map((n) => [n, `${DG}/${n}.gltf.glb`]),
+  ...['chest', 'chest_gold'].map((n) => [n, `${DG}/${n}.glb`]),
   ...['building_destroyed', 'building_tower_A_blue', 'building_tower_catapult_blue', 'rock_single_A', 'rock_single_B',
     'rock_single_C', 'rock_single_D', 'mountain_A', 'mountain_B', 'mountain_C', 'hills_A_trees', 'trees_B_large', 'flag_blue', 'tent']
     .map((n) => [n, findFile(HX, `${n}.gltf`)]),

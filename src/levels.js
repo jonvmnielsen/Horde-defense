@@ -23,7 +23,7 @@ export const WEAPON = [
 
 // Side-lane events. Each side lane draws from its own shuffled copy of this deck, so left and right differ.
 export const EVENTS = {
-  deck: ['plus1', 'plus1', 'plus5', 'squad', 'squad', 'squad', 'fort', 'weapon', 'weapon', 'weapon2', 'prisoner', 'altar', 'barrels', 'rapid', 'bomb'],
+  deck: ['plus1', 'plus1', 'plus5', 'squad', 'squad', 'squad', 'fort', 'weapon', 'weapon', 'weapon2', 'prisoner', 'prisoner', 'barrels', 'rapid', 'bomb'],
   gap: [0.1, 0.5], // seconds between events: the side lanes are never empty
 };
 
@@ -42,6 +42,7 @@ export function levelConfig(n) {
     n,
     duration: 80 + k * 10, // seconds of horde before the boss arrives (this is the progress bar)
     hpScale: 1 + k * 0.35, // every enemy type is a bit tougher on each new level (never during a level)
+    minionHp: k < 2 ? 1 : 1 + (k - 1) * 0.5, // the basic skeleton stays one-shot on level 2 (a crossbow bolt does 1), then gets tougher in steps
     // the middle horde is one packed mass that fills the lane from end to end
     hordeSpeed: [3.2 + k * 0.1, 5.2 + k * 0.15], // running speed at the start / end of the level (units per second)
     hordeWidth: [2.4 + k * 0.5, 9], // enemies per row across the 7.5-wide lane, start / end
@@ -62,7 +63,11 @@ export function levelConfig(n) {
       { at: 0.68, type: 'caster' },
       { at: 0.8, type: 'rush' },
       ...(k >= 1 ? [{ at: 0.9, type: 'caster' }] : []),
+      // ×2 gates ride inside the horde: thin the mass in front of them to reach them in time
+      { at: 0.3, type: 'mult' },
+      { at: 0.62, type: 'mult' },
     ],
+    mult: { hp: 420 + k * 160, cap: 150 + k * 80 }, // ×2 doubles the troop, but never adds more than cap
     escort: 10, // warriors marching in front of fortresses and VÅBEN ++
     altar: { hp: 25, share: 0.3, min: 15 }, // OFFERPORT: costs 30 % of the troop (at least 15), hands over VÅBEN ++ or a hero
     // rolling hazards: shoot them or get out of the way. Barrels blow up (also in the horde: good to shoot!), boulders crush.
@@ -72,7 +77,7 @@ export function levelConfig(n) {
     plus5Hp: 12 + k * 2,
     fortHp: 2200 + k * 400, // wall guarding a +99 block
     // reward budget per level: once spent, the side lanes deal squads, +1 rows, bombs and rapid fire instead
-    budget: { fort: 2, weapon: 3, weapon2: 1, prisoner: 1, altar: 2 },
+    budget: { fort: 2, weapon: 3, weapon2: 1, prisoner: 2 }, // OFFERPORT (altar) is parked: the code stays, it is just not dealt
     plus99Hp: 150 + k * 30,
     weaponHp: 45 + k * 20, // "VÅBEN +" chest (one tier)
     rapidHp: 30, rapidTime: 10,
@@ -84,9 +89,24 @@ export function levelConfig(n) {
     heroDamage: 14 + k * 3, // fireball damage (x weapon multiplier) to everything in heroRadius
     heroRadius: 2.6,
     heroRange: 36,
+    heroHeal: 3 + k, // HELBREDER: soldiers back on their feet per spell (about every 2 s)
+    frostSlow: 3, // FROSTMAGIKER: seconds a frozen enemy crawls at a third of its speed
     bossHp: 11000 + k * 7000, // fixed per level
     bossSpeed: 2.8,
     bossKillsPerSwing: 6 + k,
+    bossThrow: { every: 3.2, warn: 1.5, radius: 2.4, kills: 8 + k * 2 }, // rocks thrown at the troop: a red ring warns where it lands
+    stars: [250 + k * 150, 500 + k * 300], // soldiers left at the end for ★★ and ★★★ (★ = level cleared)
     gold: { boss: 60 + k * 30, clear: 100 + k * 50 },
   };
 }
+
+// The base between levels. Gold from every level (won or lost) buys these; survivors of a won level wait in the barracks.
+export const BASE = {
+  // KASERNE: how many survivors the barracks can keep for the next level
+  barracks: { name: 'Kaserne', what: 'Overlevende der venter til næste bane', levels: [10, 25, 50, 100, 200], cost: [0, 250, 700, 1600, 3500] },
+  // VÅBENSMED: weapon tier every level starts with
+  smith: { name: 'Våbensmed', what: 'Våbnet du starter hver bane med', levels: [0, 1, 2], cost: [0, 900, 2600] },
+  // HELTEHAL: heroes that march out with the troop at the start of a level
+  hall: { name: 'Heltehal', what: 'Helte der følger med fra start', levels: [0, 1, 2], cost: [0, 1200, 3200] },
+};
+export const LEVEL_COUNT = 12; // levels on the map (the game keeps going; the map just shows this many)

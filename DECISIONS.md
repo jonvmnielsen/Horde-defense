@@ -36,3 +36,10 @@
 | 2026-10-08 | Ingen mure mellem sporene, sporbredde 7,5 | Jon: bredere kolonner, murene skal væk. |
 | 2026-10-08 | Farer der ruller ind i lejren | Jon: forhindringer skal kunne dræbe truppen, hvis man ikke flytter sig. |
 | 2026-10-08 | Offerporte og eskorterede belønninger | Jon: belønninger skal være svære, og man skal nogle gange ofre soldater. |
+| 2026-10-08 | Offerporten tages ud af spillet (koden bliver) | Jon mente "ofre" som prisen ved at skyde i et belønningsspor, mens horden kommer nærmere. Kan komme tilbage senere. |
+| 2026-10-08 | ×2-porte kører inde i horden | Jon: multiplikator midt i horden; man skal skyde sig igennem massen for at nå den. Loft på gevinsten, så den ikke giver lavine. |
+| 2026-10-08 | Tre heltetyper med hver sin evne | Jon: heltevalg med ild, frost der bremser, og helbredelse. |
+| 2026-10-08 | Bossen kaster sten med varselsring | Jon: noget man skal undvige. Undvigelse koster ild på bossen (man skifter spor). |
+| 2026-10-08 | Base med Kaserne, Våbensmed og Heltehal; guld fra alle baner, overlevende fra vundne | Jon: overlevende skal betyde noget, guld skal købe startsoldater, våben og helte. Kasernens loft holder næste bane fra at blive triviel. |
+| 2026-10-08 | Banekort med 3 stjerner efter overlevende | Jon: kort med stjerner. Stjerner belønner at holde truppen i live. |
+| 2026-10-08 | Det basale skelet har 1 liv også på bane 2 | Bot-test: bane 2 tabte 2 af 3, fordi armbrøsten skulle bruge 2 skud pr. skelet. |

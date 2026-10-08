@@ -153,6 +153,7 @@ export class Floaters {
     const el = document.createElement('div');
     el.className = 'floater ' + (cls || '');
     el.textContent = text;
+    el.style.opacity = '0'; // hidden until the first update has placed it
     this.c.appendChild(el);
     this.items.push({ el, x: pos.x, y: pos.y, z: pos.z, t: 0, life, rise });
   }

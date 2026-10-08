@@ -71,6 +71,54 @@
   #over h2, #win h2 { margin: 0 0 14px; font-weight: 400; font-size: 34px; }
   #over .row, #win .row { display: flex; justify-content: space-between; font-size: 20px; padding: 6px 2px; border-bottom: 1px solid rgba(255,255,255,0.15); }
   #over button, #win button { margin-top: 18px; font-family: var(--font); font-size: 24px; color: #fff; background: var(--blue); border: 3px solid #fff; border-radius: 14px; padding: 10px 26px; box-shadow: 0 4px 0 var(--blue-dark); cursor: pointer; }
+  .floater.green { color: #b8ffb0; -webkit-text-stroke-color: #0a4a12; font-size: 24px; }
+  .floater.dmg { color: #fff6e0; -webkit-text-stroke: 4px #5a0d06; font-size: 22px; }
+  .floater.dmg.crit { color: #ffd23f; font-size: 30px; }
+  #flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; z-index: 3; mix-blend-mode: screen; }
+  /* menus: level map and base */
+  .menu { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; background: linear-gradient(rgba(14, 20, 40, 0.82), rgba(40, 22, 14, 0.78)); opacity: 0; pointer-events: none; transition: opacity .35s; font-family: var(--font); color: #fff; z-index: 4;
+    padding: max(14px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); }
+  .menu.on { opacity: 1; pointer-events: auto; }
+  .menu h1 { margin: 6px 0 2px; font-weight: 400; font-size: 34px; letter-spacing: 1px; -webkit-text-stroke: 5px var(--blue-dark); paint-order: stroke fill; }
+  .menu .sub { font-size: 16px; opacity: 0.85; margin-bottom: 10px; text-align: center; }
+  .menu .bar { display: flex; gap: 8px; justify-content: center; margin-bottom: 10px; flex-wrap: wrap; }
+  .menu .pill { font-size: 18px; }
+  .menu .pill .ico { width: 26px; height: 26px; display: grid; place-items: center; font-size: 18px; }
+  .btn { font-family: var(--font); font-size: 22px; color: #fff; background: var(--blue); border: 3px solid #fff; border-radius: 14px; padding: 9px 22px; box-shadow: 0 4px 0 var(--blue-dark); cursor: pointer; }
+  .btn.gold { background: linear-gradient(#ffd45a, #f0a414); color: #4a2600; box-shadow: 0 4px 0 #8a4a00; }
+  .btn:disabled { background: #5a6170; box-shadow: 0 4px 0 #2a2f38; color: #c8ccd4; cursor: default; }
+  .btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 2px 0 var(--blue-dark); }
+  #mapPath { position: relative; flex: 1; width: min(100%, 380px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+  #mapPath svg { position: absolute; left: 0; top: 0; pointer-events: none; }
+  .node { position: absolute; width: 74px; height: 74px; margin: -37px 0 0 -37px; border-radius: 50%; border: 4px solid #fff; background: radial-gradient(circle at 35% 30%, #7fb5ff, var(--blue) 55%, #173f9e); color: #fff; font-family: var(--font); font-size: 28px; box-shadow: 0 5px 0 var(--blue-dark), 0 8px 16px rgba(0,0,0,0.4); cursor: pointer; padding: 0; }
+  .node.locked { background: radial-gradient(circle at 35% 30%, #8a8f9a, #545a66 60%, #343843); box-shadow: 0 5px 0 #23262d; color: #b8bcc6; cursor: default; }
+  .node.current { animation: bob 1.2s ease-in-out infinite; border-color: var(--gold); }
+  @keyframes bob { 50% { transform: translateY(-5px); } }
+  .node .stars { position: absolute; left: 50%; bottom: -24px; transform: translateX(-50%); font-size: 19px; letter-spacing: -1px; white-space: nowrap; -webkit-text-stroke: 3px #3a2200; paint-order: stroke fill; }
+  .star { color: rgba(255,255,255,0.28); }
+  .star.on { color: var(--gold); }
+  .node.locked .stars { display: none; }
+  .menu .foot { display: flex; gap: 12px; justify-content: center; padding-top: 10px; }
+  #baseList { width: min(100%, 380px); display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1; }
+  .up { background: rgba(10, 16, 28, 0.7); border: 2px solid rgba(255,255,255,0.5); border-radius: 18px; padding: 12px 14px; display: grid; grid-template-columns: 52px 1fr auto; gap: 4px 12px; align-items: center; }
+  .up .ico { grid-row: span 2; width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; font-size: 30px; background: rgba(255,255,255,0.12); }
+  .up .nm { font-size: 22px; }
+  .up .what { font-size: 14px; opacity: 0.8; font-family: system-ui, sans-serif; }
+  .up .now { grid-column: 2; font-size: 17px; color: #9fd0ff; }
+  .up .btn { grid-row: 1 / span 3; grid-column: 3; font-size: 18px; padding: 8px 12px; display: flex; align-items: center; gap: 6px; }
+  .up .btn .coin { width: 20px; height: 20px; }
+  .up .pips { grid-column: 2; display: flex; gap: 4px; }
+  .up .pips i { width: 18px; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.2); }
+  .up .pips i.on { background: var(--gold); }
+  .winstars { font-size: 52px; letter-spacing: 4px; margin: -4px 0 6px; -webkit-text-stroke: 5px #3a2200; paint-order: stroke fill; }
+  .winstars .star { display: inline-block; }
+  .winstars .star.on { animation: starpop .5s cubic-bezier(.3,1.6,.5,1) backwards; }
+  .winstars .star.on:nth-child(2) { animation-delay: .25s; } .winstars .star.on:nth-child(3) { animation-delay: .5s; }
+  @keyframes starpop { from { transform: scale(0); } }
+  #win .note { font-size: 14px; opacity: 0.85; font-family: system-ui, sans-serif; margin-top: 8px; }
+  #over .btns, #win .btns { display: flex; gap: 10px; justify-content: center; }
+  #over .btns button.alt, #win .btns button.alt { background: #4a5468; box-shadow: 0 4px 0 #23293a; }
+  body.inmenu #hud, body.inmenu #floaters { visibility: hidden; }
   #debug { position: absolute; bottom: 4px; left: 6px; font: 11px/1.2 ui-monospace, monospace; color: #fff; text-shadow: 0 1px 0 #000; }
 </style>
 <canvas id="c"></canvas>
@@ -97,17 +145,33 @@
     <div class="row"><span>Guld</span><span id="overGold">0</span></div>
     <div class="row"><span>Drab</span><span id="overKills">0</span></div>
     <div class="row"><span>Tid</span><span id="overTime">0:00</span></div>
-    <button id="again">Prøv igen</button>
+    <div class="btns"><button id="toMap" class="alt">Kort</button><button id="again">Prøv igen</button></div>
   </div>
 </div>
 <div id="win">
   <div class="card">
     <h2 id="winTitle">Bane 1 klaret!</h2>
-    <div class="row"><span>Overlevende (tager hjem)</span><span id="winTroop">0</span></div>
+    <div class="winstars" id="winStars"><span class="star">★</span><span class="star">★</span><span class="star">★</span></div>
+    <div class="row"><span>Overlevende</span><span id="winTroop">0</span></div>
     <div class="row"><span>Guld</span><span id="winGold">0</span></div>
     <div class="row"><span>Drab</span><span id="winKills">0</span></div>
-    <button id="next">Næste bane</button>
+    <div class="note" id="winNote"></div>
+    <div class="btns"><button id="toBase" class="alt">Base</button><button id="next">Næste bane</button></div>
   </div>
+</div>
+<div id="flash"></div>
+<div class="menu" id="map">
+  <h1>Felttoget</h1>
+  <div class="bar"><div class="pill"><span class="coin"></span><span id="mapGold">0</span></div><div class="pill"><span class="ico">🛡️</span><span id="mapReserve">0</span></div></div>
+  <div id="mapPath"></div>
+  <div class="foot"><button class="btn gold" id="openBase">Base</button><button class="btn" id="playNext">Spil bane 1</button></div>
+</div>
+<div class="menu" id="base">
+  <h1>Basen</h1>
+  <div class="sub" id="baseSub">Guld fra hver bane bygger basen.</div>
+  <div class="bar"><div class="pill"><span class="coin"></span><span id="baseGold">0</span></div><div class="pill"><span class="ico">🛡️</span><span id="baseReserve">0</span></div></div>
+  <div id="baseList"></div>
+  <div class="foot"><button class="btn" id="baseBack">Til kortet</button></div>
 </div>
 <div id="loading"><div style="text-align:center">Indlæser<div class="bar"><i></i></div></div></div>
 <script type="module" src="game.js"></script>

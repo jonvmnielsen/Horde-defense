@@ -192,7 +192,13 @@ export function buildWorld(scene, envGltf) {
   ground.receiveShadow = true;
   scene.add(ground);
 
-  return { torches };
+  // fire spots: braziers on the outer walls and bonfires out on the battlefield (flames are particles, see main.js)
+  const fires = torches.map((p) => ({ x: p.x, y: p.y + 0.1, z: p.z, size: 0.5 }));
+  for (const [x, z] of [[-EDGE - 9, -18], [EDGE + 10, -30], [-EDGE - 14, -52], [EDGE + 7, -6], [-EDGE - 6, -4]]) {
+    fires.push({ x, y: 0.4, z, size: 1.3 });
+  }
+  const smokes = [[-38, -70], [30, -88], [-14, -110], [48, -40]].map(([x, z]) => ({ x, z }));
+  return { torches, fires, smokes };
 }
 
 function makeGroundTexture() {
@@ -217,9 +223,9 @@ export function makeSky(scene) {
     side: THREE.BackSide,
     depthWrite: false,
     uniforms: {
-      top: { value: new THREE.Color(0x2f62b8) },
-      mid: { value: new THREE.Color(0x8fb5de) },
-      bottom: { value: new THREE.Color(0xe9cfa6) },
+      top: { value: new THREE.Color(0x2b3f7a) },
+      mid: { value: new THREE.Color(0xd08a6a) },
+      bottom: { value: new THREE.Color(0xffc27a) },
     },
     vertexShader: `varying vec3 vW; void main(){ vW = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
     fragmentShader: `uniform vec3 top; uniform vec3 mid; uniform vec3 bottom; varying vec3 vW;
