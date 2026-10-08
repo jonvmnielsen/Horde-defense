@@ -43,3 +43,9 @@
 | 2026-10-08 | Base med Kaserne, Våbensmed og Heltehal; guld fra alle baner, overlevende fra vundne | Jon: overlevende skal betyde noget, guld skal købe startsoldater, våben og helte. Kasernens loft holder næste bane fra at blive triviel. |
 | 2026-10-08 | Banekort med 3 stjerner efter overlevende | Jon: kort med stjerner. Stjerner belønner at holde truppen i live. |
 | 2026-10-08 | Det basale skelet har 1 liv også på bane 2 | Bot-test: bane 2 tabte 2 af 3, fordi armbrøsten skulle bruge 2 skud pr. skelet. |
+| 2026-10-08 | Opløsning 2× på telefoner, mindre bloom og dis | Jon: billedet var sløret og "røget". |
+| 2026-10-08 | Begivenhedstekst øverst, ingen svævende tal ved gevinst og tab | Jon: tekst midt på skærmen skjulte sporene. Analysen: kun tal på porte og over truppen. |
+| 2026-10-08 | Syntetiseret lyd (WebAudio) i stedet for lydfiler | Ingen licenser at tjekke, intet at downloade, lille fil. Lyd var det største hul ifølge analysen. |
+| 2026-10-08 | Tælleren over truppen er al feedback på antal | Gevinst og tab vises ét sted, hvor øjet allerede er. |
+| 2026-10-08 | Base med 10 opgraderinger og stigende priser; guld fra resultat i stedet for drab | Jon havde alt efter 2-3 baner; drab gav ~3000 guld pr. bane. |
+| 2026-10-08 | Nye asset-pakker fra tredjeparts kopier bruges ikke uden Jons OK | Licensen skal kunne læses i kildens egen fil (CLAUDE.md). |

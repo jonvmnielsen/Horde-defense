@@ -30,10 +30,10 @@ export const EVENTS = {
 // Enemy types. Their strength is FIXED: they never scale with the player. Pressure comes from numbers and from special types.
 // hp is multiplied by the level's hpScale (a little more each level). cost = soldiers lost when one reaches the troop.
 export const ENEMY = {
-  minion: { hp: 1, cost: 1, gold: 1, scale: 1 }, // the endless mass
-  warrior: { hp: 14, cost: 3, gold: 3, scale: 1 }, // armoured skeletons mixed into the mass
-  brute: { hp: 45, cost: 6, gold: 6, scale: 1.3 }, // Kæmpe: a big armoured skeleton, more of them late in the level
-  elite: { hp: 160, cost: 12, gold: 25, troops: 10, scale: 1.55 }, // Guldkriger: big, golden, pays +10 soldiers
+  minion: { hp: 1, cost: 1, gold: 0, scale: 1 }, // the endless mass
+  warrior: { hp: 14, cost: 3, gold: 0.15, scale: 1 }, // armoured skeletons mixed into the mass
+  brute: { hp: 45, cost: 6, gold: 0.5, scale: 1.3 }, // Kæmpe: a big armoured skeleton, more of them late in the level
+  elite: { hp: 160, cost: 12, gold: 5, troops: 10, scale: 1.55 }, // Guldkriger: big, golden, pays +10 soldiers
 };
 
 export function levelConfig(n) {
@@ -54,7 +54,7 @@ export function levelConfig(n) {
     bruteShare: [0, 0.2 + k * 0.03], // share of Kæmper (from 30 % of the level)
     eliteEvery: 6 - Math.min(3, k * 0.7), // seconds between Guldkrigere
     rush: { time: 3.5, speed: 1.5, width: [5, 9] }, // STORMLØB: a wide block that sprints (narrower early in the level)
-    caster: { hp: 300 + k * 150, stopAt: 24, interval: 2.2 - Math.min(0.6, k * 0.2), kills: 5 + k * 2, gold: 60, troops: 25 },
+    caster: { hp: 300 + k * 150, stopAt: 24, interval: 2.2 - Math.min(0.6, k * 0.2), kills: 5 + k * 2, gold: 30, troops: 25 },
     // scripted events (at = share of the level): rushes and Skeletmagikere in a side lane
     timeline: [
       { at: 0.2, type: 'rush' },
@@ -96,17 +96,35 @@ export function levelConfig(n) {
     bossKillsPerSwing: 6 + k,
     bossThrow: { every: 3.2, warn: 1.5, radius: 2.4, kills: 8 + k * 2 }, // rocks thrown at the troop: a red ring warns where it lands
     stars: [250 + k * 150, 500 + k * 300], // soldiers left at the end for ★★ and ★★★ (★ = level cleared)
-    gold: { boss: 60 + k * 30, clear: 100 + k * 50 },
+    // gold is the base's currency: most of it comes from finishing well (boss, clear, stars), not from the mass
+    gold: { boss: 50 + k * 25, clear: 100 + k * 50, star: 40 + k * 20 },
   };
 }
 
-// The base between levels. Gold from every level (won or lost) buys these; survivors of a won level wait in the barracks.
+// The base between levels. Gold from every level (won or lost) buys upgrades; survivors of a won level wait in the barracks.
+// Each upgrade: max level, cost(lv) = price of going from lv to lv+1, value(lv) = its effect at that level, text(v) = what it means.
+const geo = (base, g) => (lv) => Math.round(base * Math.pow(g, lv) / 10) * 10;
+export const BASE_GROUPS = ['Tropper', 'Våben', 'Helte', 'Økonomi'];
 export const BASE = {
-  // KASERNE: how many survivors the barracks can keep for the next level
-  barracks: { name: 'Kaserne', what: 'Overlevende der venter til næste bane', levels: [10, 25, 50, 100, 200], cost: [0, 250, 700, 1600, 3500] },
-  // VÅBENSMED: weapon tier every level starts with
-  smith: { name: 'Våbensmed', what: 'Våbnet du starter hver bane med', levels: [0, 1, 2], cost: [0, 900, 2600] },
-  // HELTEHAL: heroes that march out with the troop at the start of a level
-  hall: { name: 'Heltehal', what: 'Helte der følger med fra start', levels: [0, 1, 2], cost: [0, 1200, 3200] },
+  training: { group: 'Tropper', icon: '🏋️', name: 'Træningslejr', what: 'Flere soldater ved start af hver bane', max: 12, cost: geo(80, 1.45),
+    value: (lv) => lv * 4, text: (v) => '+' + v + ' soldater' },
+  barracks: { group: 'Tropper', icon: '🛡️', name: 'Kaserne', what: 'Overlevende venter her til næste bane', max: 10, cost: geo(150, 1.5),
+    value: (lv) => [10, 20, 35, 50, 75, 100, 140, 200, 275, 350, 450][lv], text: (v) => 'plads til ' + v },
+  medic: { group: 'Tropper', icon: '⛑️', name: 'Lazaret', what: 'Chance for at en faldet soldat rejser sig igen', max: 8, cost: geo(200, 1.55),
+    value: (lv) => lv * 4, text: (v) => v + ' %' },
+  smith: { group: 'Våben', icon: '⚒️', name: 'Våbensmed', what: 'Våbnet du starter hver bane med', max: 3, cost: (lv) => [500, 1800, 6000][lv],
+    value: (lv) => lv, text: (v) => ['Armbrøst', 'Stålbolte', 'Ildbolte', 'Frostbolte'][v] },
+  sharp: { group: 'Våben', icon: '🎯', name: 'Skarpe bolte', what: 'Mere skade med alle våben', max: 10, cost: geo(150, 1.5),
+    value: (lv) => lv * 8, text: (v) => '+' + v + ' % skade' },
+  drill: { group: 'Våben', icon: '⏱️', name: 'Skydeøvelser', what: 'Soldaterne lader hurtigere', max: 8, cost: geo(200, 1.55),
+    value: (lv) => lv * 5, text: (v) => '+' + v + ' % skudtakt' },
+  powder: { group: 'Våben', icon: '💣', name: 'Krudtmagasin', what: 'Stærkere bomber og længere 2× skud', max: 5, cost: geo(250, 1.6),
+    value: (lv) => lv * 20, text: (v) => '+' + v + ' %' },
+  hall: { group: 'Helte', icon: '✨', name: 'Heltehal', what: 'Helte der følger med fra start', max: 3, cost: (lv) => [700, 2500, 7000][lv],
+    value: (lv) => lv, text: (v) => v === 0 ? 'ingen' : v + (v === 1 ? ' helt' : ' helte') },
+  heroes: { group: 'Helte', icon: '📜', name: 'Heltetræning', what: 'Heltene rammer hårdere, fryser længere og heler mere', max: 8, cost: geo(250, 1.55),
+    value: (lv) => lv * 15, text: (v) => '+' + v + ' % kraft' },
+  treasury: { group: 'Økonomi', icon: '💰', name: 'Skattekammer', what: 'Mere guld fra hver bane', max: 8, cost: geo(300, 1.6),
+    value: (lv) => lv * 10, text: (v) => '+' + v + ' % guld' },
 };
-export const LEVEL_COUNT = 12; // levels on the map (the game keeps going; the map just shows this many)
+export const LEVEL_COUNT = 20; // levels on the map (the game keeps going; the map just shows this many)

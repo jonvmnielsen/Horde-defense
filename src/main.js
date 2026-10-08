@@ -7,10 +7,11 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { PropSet } from './props.js';
+import { sfx, buzz, unlockAudio, isMuted, setMuted } from './audio.js';
 import { bakeCharacter, createVatMaterial, Crowd, setVatTime } from './vat.js';
 import { buildWorld, makeSky, LANES, LANE_W, LANE_END_Z, EDGE } from './world.js';
 import { Particles, Bolts, Floaters, RADIAL } from './fx.js';
-import { levelConfig, TROOP, WEAPON, EVENTS, ENEMY, BASE, LEVEL_COUNT } from './levels.js';
+import { levelConfig, TROOP, WEAPON, EVENTS, ENEMY, BASE, BASE_GROUPS, LEVEL_COUNT } from './levels.js';
 
 const params = new URLSearchParams(location.search);
 const SNAP = params.has('snap'); // deterministic mode for screenshots
@@ -18,7 +19,8 @@ const SNAP = params.has('snap'); // deterministic mode for screenshots
 // ---------------------------------------------------------------- renderer
 const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
-let pixelRatio = params.has('pr') ? +params.get('pr') : Math.min(window.devicePixelRatio || 1, SNAP ? 1 : 1.5);
+let pixelRatio = params.has('pr') ? +params.get('pr') : Math.min(window.devicePixelRatio || 1, SNAP ? 1 : 2); // phones are 2-3x: render at 2x so details stay sharp
+const MIN_PR = Math.min(window.devicePixelRatio || 1, 1.5); // adaptive quality never drops below this
 renderer.setPixelRatio(pixelRatio);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -29,7 +31,7 @@ renderer.shadowMap.autoUpdate = true; // units are animated, so shadows re-rende
 const MAX_ANISO = Math.min(8, renderer.capabilities.getMaxAnisotropy());
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0xd9a07a, 60, 175);
+scene.fog = new THREE.Fog(0xe2b896, 95, 240); // light haze only far away: the lanes stay crisp
 const camera = new THREE.PerspectiveCamera(60, 1, 0.5, 900);
 const TROOP_Z = -2.6;
 const camBase = new THREE.Vector3(0, 13.5, 8.6);
@@ -39,9 +41,9 @@ const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 scene.environmentIntensity = 0.22;
 
-const hemi = new THREE.HemisphereLight(0xb9c8ff, 0x6a4a3a, 0.7);
+const hemi = new THREE.HemisphereLight(0xc4d2ff, 0x6a5040, 0.85);
 scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xffb27a, 3.9);
+const sun = new THREE.DirectionalLight(0xffcf9e, 3.6); // warm late-afternoon sun, not a full orange sunset (readability first)
 // low side light from the left so every unit throws a visible shadow across the ground toward the right
 sun.position.set(-36, 20, -14);
 sun.target.position.set(0, 0, -20);
@@ -57,7 +59,7 @@ scene.add(sun, sun.target);
 const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
 const composer = new EffectComposer(renderer, rt);
 composer.addPass(new RenderPass(scene, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.5, 0.45, 0.92);
+const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.32, 0.3, 0.95); // only the brightest sparks glow
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
 
@@ -209,13 +211,13 @@ function updateFires(dt) {
         glow.emit(f.x + (Math.random() - 0.5) * r, f.y + 0.1, f.z + (Math.random() - 0.5) * r, (Math.random() - 0.5) * 0.4, 1.2 + Math.random() * 1.6 * f.size, 0,
           3.2, 1.0 + hot * 0.9, 0.2 + hot * 0.2, f.size * (0.55 + Math.random() * 0.4), 0.45 + Math.random() * 0.35, -1.5);
       }
-      if (f.size > 1 && Math.random() < step * 2) smoke.emit(f.x, f.y + 1.6, f.z, 0.3, 1.4, 0, 0.32, 0.28, 0.27, 2.2, 3.2, -0.15);
+      if (f.size > 1 && Math.random() < step * 1.2) smoke.emit(f.x, f.y + 1.6, f.z, 0.3, 1.4, 0, 0.45, 0.42, 0.4, 1.6, 2.6, -0.15);
     }
   }
   smokeAcc += dt;
-  while (smokeAcc > 0.22) {
-    smokeAcc -= 0.22;
-    for (const c of world.smokes) smoke.emit(c.x + (Math.random() - 0.5) * 3, 1, c.z + (Math.random() - 0.5) * 3, 0.6 + Math.random() * 0.4, 2.6 + Math.random(), 0, 0.2, 0.18, 0.18, 5 + Math.random() * 3, 7, -0.1);
+  while (smokeAcc > 0.35) {
+    smokeAcc -= 0.35;
+    for (const c of world.smokes) smoke.emit(c.x + (Math.random() - 0.5) * 2, 1, c.z + (Math.random() - 0.5) * 2, 0.6 + Math.random() * 0.4, 2.6 + Math.random(), 0, 0.42, 0.4, 0.4, 3 + Math.random() * 2, 5, -0.1);
   }
   smoke.update(dt);
 }
@@ -230,6 +232,34 @@ function flashScreen(css, a = 0.5) {
   void flashEl.offsetWidth;
   flashEl.style.transition = 'opacity .45s ease-out';
   flashEl.style.opacity = 0;
+}
+
+// hit-stop: the game freezes for a few frames on the biggest hits (only in real play, never in tests)
+let hitStop = 0;
+function freeze(t) { if (!S?.bot && !SNAP) hitStop = Math.max(hitStop, t); }
+
+// the troop counter is the score: it bounces green on every gain and shakes red on every loss, with the change next to it
+let deltaAcc = 0, deltaT = 0, deltaEl = null;
+function troopDelta(n) {
+  if (S?.bot || !troopEl) return;
+  if (!deltaEl) { deltaEl = document.createElement('i'); deltaEl.className = 'delta'; troopEl.appendChild(deltaEl); }
+  if (deltaT <= 0 || Math.sign(deltaAcc) !== Math.sign(n)) deltaAcc = 0;
+  deltaAcc += n; deltaT = 0.9;
+  deltaEl.textContent = (deltaAcc > 0 ? '+' : '') + deltaAcc.toLocaleString('da-DK');
+  deltaEl.className = 'delta ' + (deltaAcc > 0 ? 'plus' : 'minus');
+  troopEl.classList.remove('gain', 'loss'); void troopEl.offsetWidth;
+  troopEl.classList.add(n > 0 ? 'gain' : 'loss');
+}
+function updateDelta(dt) {
+  if (deltaT > 0) { deltaT -= dt; if (deltaT <= 0 && deltaEl) deltaEl.className = 'delta'; }
+}
+// a ring of light under the troop (gain = blue, weapon = weapon colour)
+function troopRing(col, n = 40) {
+  const R = troopRadius() + 0.6;
+  for (let k = 0; k < n; k++) {
+    const a = k / n * Math.PI * 2;
+    glow.emit(S.cx + Math.cos(a) * R, 0.25, TROOP_Z + Math.sin(a) * R * 0.8, Math.cos(a) * 1.5, 2.5 + Math.random() * 2, Math.sin(a) * 1.5, col[0], col[1], col[2], 0.45, 0.6, -1);
+  }
 }
 
 // ---------------------------------------------------------------- banner bearer (a knight at the front of the troop, flag above)
@@ -279,6 +309,7 @@ function throwRock(b) {
   S.rocks.push({ v, x0: b.x + 0.8, z0: b.z + 1, tx, tz: TROOP_Z - 0.5, t: 0, dur: c.warn, spin: (Math.random() - 0.5) * 8 });
   bosses.play(b.i, '2H_Melee_Attack_Chop', clock, 1.3);
   b.throwAnim = 0.75;
+  sfx.throwRock();
 }
 function releaseRock(r) { r.v.g.visible = r.v.ring.visible = r.v.fill.visible = false; rockPool.push(r.v); }
 function updateRocks(dt) {
@@ -297,6 +328,7 @@ function updateRocks(dt) {
       r.done = true;
       const hit = Math.abs(S.cx - r.tx) < c.radius + troopRadius() * 0.45;
       if (hit && (S.phase === 'boss' || S.phase === 'horde')) { loseTroops(c.kills, r.tx, r.tz); flashScreen('rgba(255,60,30,0.9)', 0.35); }
+      sfx.rockImpact(hit);
       S.shake = Math.max(S.shake, hit ? 0.6 : 0.3);
       for (let k = 0; k < 18; k++) puff(r.tx + (Math.random() - 0.5) * 2.5, 0.3, r.tz + (Math.random() - 0.5) * 2.5, 1, [0.6, 0.55, 0.5], 2.0);
       for (let k = 0; k < 14; k++) dust.emit(r.tx, 0.6, r.tz, (Math.random() - 0.5) * 10, 3 + Math.random() * 5, (Math.random() - 0.5) * 10, 0.5, 0.45, 0.4, 0.45, 0.9, 14);
@@ -308,10 +340,10 @@ function updateRocks(dt) {
 
 // ---------------------------------------------------------------- damage numbers on the boss and enemy mages (summed, a few per second)
 function updateDamageNumbers(dt) {
-  for (const t of [S.boss, ...S.casterList]) {
+  for (const t of [S.boss]) { // damage numbers only on the boss (keeps the screen clean)
     if (!t || !t.dmgAcc) continue;
     t.dmgT = (t.dmgT || 0) + dt;
-    if (t.dmgT < 0.22) continue;
+    if (t.dmgT < 0.4) continue;
     t.dmgT = 0;
     const big = t.dmgAcc >= 60;
     floaters.add(Math.round(t.dmgAcc).toLocaleString('da-DK'), { x: t.x + (Math.random() - 0.5) * (t === S.boss ? 2.4 : 1.2), y: (t === S.boss ? 4.6 : 2.6) + Math.random() * 0.6, z: t.z }, big ? 'dmg crit' : 'dmg', 0.65, 1.8);
@@ -506,13 +538,13 @@ function startLevel(n, troopCount) {
   const cfg = levelConfig(n);
   S = {
     level: n, cfg, t: 0, phase: 'horde', gold: 0, home: S?.home || 0, cx: 0, targetCx: 0,
-    count: troopCount, startCount: troopCount, settled: false, troop: [], enemies: [], boss: null, items: [], walls: [],
+    count: troopCount, startCount: troopCount, settled: false, mods: { dmg: 1, rate: 1, hero: 1, power: 1, gold: 1, medic: 0 }, troop: [], enemies: [], boss: null, items: [], walls: [],
     heroList: [], fireballs: [], weapon: 0, rapid: 0, stats: { ev: {}, pop: {}, lane: [0, 0, 0] }, nextHorde: 0.4, kills: 0, lost: 0, shake: 0, endT: 0, bot: S?.bot || null,
     // each side lane plays its own shuffled deck of events, so the two sides never mirror each other
     // a scripted opening (popped from the end) guarantees an early weapon chest and +5s, then the decks are random
     // scripted opening (popped from the end, nearest first): soldiers on both sides and an early weapon chest, then random decks
     side: [{ lane: LEFT, deck: ['squad', 'plus5', 'plus1', 'plus1'], next: 0 }, { lane: RIGHT, deck: ['plus5', 'plus1', 'weapon', 'plus1'], next: 0 }],
-    hazards: [], rocks: [], nextHazard: 15, spent: {}, orbs: [], rowAcc: 0, hordeSpeed: 3, rush: 0, nextElite: cfg.eliteEvery, timeline: cfg.timeline.map((ev) => ({ ...ev })), casterList: [],
+    hazards: [], rocks: [], troopFlash: -1, nextHazard: 15, spent: {}, orbs: [], rowAcc: 0, hordeSpeed: 3, rush: 0, nextElite: cfg.eliteEvery, timeline: cfg.timeline.map((ev) => ({ ...ev })), casterList: [],
   };
   const vis = Math.min(S.count, TROOP.visibleMax);
   for (let k = 0; k < vis; k++) spawnVisibleSoldier(S.cx + (Math.random() - 0.5) * 2, TROOP_Z + (Math.random() - 0.5) * 2, true);
@@ -576,7 +608,7 @@ function explodeBarrel(h, hitTroop) {
     glow.emit(h.x + Math.cos(a) * r * 0.5, 0.5 + Math.random() * 2, h.z + Math.sin(a) * r * 0.5, Math.cos(a) * 8, 3 + Math.random() * 9, Math.sin(a) * 8, 3.0, 1.1 + Math.random() * 0.8, 0.2, 0.8 + Math.random() * 0.7, 0.5 + Math.random() * 0.4, 8);
   }
   for (let k = 0; k < 24; k++) puff(h.x + (Math.random() - 0.5) * 3, 0.3, h.z + (Math.random() - 0.5) * 3, 1, [0.3, 0.27, 0.25], 2.6);
-  floaters.add(hitTroop ? 'BUM!' : 'BUM!', { x: h.x, y: 2.5, z: h.z }, 'orange big', 0.9, 2);
+  sfx.explosion(hitTroop); freeze(0.05);
   S.shake = Math.max(S.shake, hitTroop ? 0.7 : 0.45);
   flashScreen('rgba(255,150,40,0.95)', hitTroop ? 0.5 : 0.3);
 }
@@ -585,6 +617,7 @@ function crumbleBoulder(h) {
   h.alive = false;
   for (let k = 0; k < 40; k++) dust.emit(h.x + (Math.random() - 0.5) * 2, 0.4 + Math.random() * 1.5, h.z, (Math.random() - 0.5) * 6, 1 + Math.random() * 4, (Math.random() - 0.5) * 6, 0.62, 0.6, 0.57, 1.6, 0.9, 6);
   S.shake = Math.max(S.shake, 0.3);
+  sfx.wall();
 }
 
 const _redStripe = new THREE.Color(0xff2a1a);
@@ -609,7 +642,7 @@ function updateHazards(dt, playing) {
       if (h.hazard === 'barrel') { explodeBarrel(h, true); continue; }
       loseTroops(S.cfg.hazard.boulder.kills, h.x, h.z);
       S.shake = Math.max(S.shake, 0.6);
-      floaters.add('KNUST!', { x: h.x, y: 2.5, z: h.z }, 'red big', 0.9, 2);
+      sfx.rockImpact(true);
     }
     if (h.z > TROOP_Z + 9) { h.alive = false; continue; }
     h.roll += h.speed * dt / (h.hazard === 'barrel' ? 0.56 : 0.85);
@@ -670,7 +703,8 @@ function sideEvent(lane, deckState, z0 = SPAWN_Z) {
     case 'mult': {
       const n = Math.max(1, Math.min(S.count, S.cfg.mult.cap));
       gainTroops(n);
-      floaters.add('×2  +' + n, p, 'gold big', 1.8, 3.2);
+      sfx.mult(); buzz(80); freeze(0.08);
+      showBanner('×2  +' + n, 'blue');
       burst(it.x, 1.5, it.z, 70, [0.6, 1.6, 3.2], 11, 0.45);
       flashScreen('rgba(120,200,255,0.95)', 0.5);
       S.shake = Math.max(S.shake, 0.3);
@@ -688,7 +722,7 @@ function slot(k) {
   return [Math.cos(a) * r, Math.sin(a) * r * 0.7];
 }
 function troopRadius() { return 0.42 * Math.sqrt(Math.max(1, visibleAlive) + 0.6); }
-function fireSpeed() { return S.rapid > 0 ? 1.9 : 1; }
+function fireSpeed() { return (S.rapid > 0 ? 1.9 : 1) * S.mods.rate; }
 
 function spawnVisibleSoldier(x, z, instant) {
   const i = soldiers.alloc();
@@ -714,14 +748,20 @@ function playShoot(s, phase) {
   soldiers.play(s.i, '2H_Ranged_Shooting', clock, sp, phase * SHOOT_LEN / sp);
 }
 
-function gainTroops(n) { S.count += n; }
+function gainTroops(n, quiet = false) {
+  S.count += n;
+  if (S.bot) return;
+  troopDelta(n);
+  if (!quiet) { sfx.gain(n); if (n >= 5) troopRing([0.5, 1.2, 3.0], n >= 50 ? 60 : 30); }
+}
 
 /** Lose soldiers near (x,z); a visible soldier always falls so the hit reads on screen. */
 function loseTroops(n, x, z, label = true) {
   n = Math.min(n, S.count);
+  if (S.mods.medic > 0) { let saved = 0; for (let k = 0; k < n; k++) if (Math.random() < S.mods.medic) saved++; n -= saved; } // Lazaret
   if (n <= 0) return;
   S.count -= n; S.lost += n;
-  if (label) floaters.add('-' + n, { x, y: 1.4, z: z - 0.5 }, 'red', 0.7, 1.2);
+  if (!S.bot) { troopDelta(-n); sfx.lose(n); buzz(n >= 8 ? 60 : 25); }
   const fall = Math.min(n, 8);
   for (let k = 0; k < fall; k++) { const s = nearestSoldier(x, z); if (s) killSoldier(s); }
   while (visibleAlive > S.count) { const s = nearestSoldier(x, z); if (!s) break; killSoldier(s); }
@@ -782,7 +822,7 @@ function spawnCaster(lane) {
   const c = S.cfg.caster;
   S.casterList.push({ caster: true, i, lane, x: LANES[lane], z: SPAWN_Z, hp: c.hp, max: c.hp, pending: 0, flash: 0, state: 'walk', t: 0, cast: 0, y: 0 });
   casters.play(i, 'Walking_D_Skeletons', clock, 0.9);
-  showBanner('SKELETMAGIKER!', 'purple');
+  showBanner('SKELETMAGIKER', 'purple'); sfx.caster();
 }
 
 function spawnBoss() {
@@ -792,13 +832,18 @@ function spawnBoss() {
   const bossHp = cfg.bossHp; // fixed: a strong troop beats it, a weak one does not
   S.boss = { i, x: LANES[MID], z: SPAWN_Z - 2, hp: bossHp, max: bossHp, pending: 0, speed: cfg.bossSpeed, state: 'walk', flash: 0, atk: 0, y: 0, t: 0 };
   bosses.play(i, 'Walking_D_Skeletons', clock, 0.95);
-  showBanner('BOSS', 'red');
+  showBanner('BOSS', 'red'); sfx.bossRoar(); buzz(100);
   S.shake = 0.4;
 }
 
 // ---------------------------------------------------------------- input
 const XMAX = EDGE - 2.4; // troop centre stays inside the outer lanes, so the clump never leaves the screen
 let dragging = false, lastX = 0;
+document.addEventListener('pointerdown', unlockAudio, true);
+document.addEventListener('click', (e) => { if (e.target.closest('button')) sfx.click(); }, true);
+const muteBtn = document.getElementById('mute');
+muteBtn.textContent = isMuted() ? '🔇' : '🔊';
+muteBtn.addEventListener('click', () => { setMuted(!isMuted()); muteBtn.textContent = isMuted() ? '🔇' : '🔊'; });
 canvas.addEventListener('pointerdown', (e) => { dragging = true; lastX = e.clientX; canvas.setPointerCapture(e.pointerId); hideHint(); });
 canvas.addEventListener('pointermove', (e) => {
   if (!dragging) return;
@@ -830,7 +875,7 @@ let lastHud = -1;
 function updateHud(force) {
   if (!force && Math.abs(clock - lastHud) < 0.08) return;
   lastHud = clock;
-  goldEl.textContent = (save.gold + (S.settled ? 0 : S.gold)).toLocaleString('da-DK');
+  goldEl.textContent = Math.floor(save.gold + (S.settled ? 0 : S.gold)).toLocaleString('da-DK');
   troopEl.querySelector('b').textContent = S.count.toLocaleString('da-DK');
   weaponEl.querySelector('b').textContent = WEAPON[S.weapon].name;
   weaponEl.style.setProperty('--wc', WEAPON[S.weapon].css);
@@ -838,20 +883,37 @@ function updateHud(force) {
   rapidEl.querySelector('b').textContent = Math.ceil(S.rapid) + ' s';
   progFill.style.width = (Math.min(1, S.t / S.cfg.duration) * 100).toFixed(1) + '%';
   progEl.classList.toggle('boss', S.phase !== 'horde');
+  document.body.classList.toggle('bossbar', !!(S.boss && S.boss.state !== 'dead'));
   if (S.boss && S.boss.state !== 'dead') { bossBar.classList.add('on'); bossFill.style.width = Math.max(0, S.boss.hp / S.boss.max * 100) + '%'; }
   else bossBar.classList.remove('on');
 }
-function showBanner(text, cls) { banner.className = cls || ''; banner.textContent = text; void banner.offsetWidth; banner.classList.add('show'); }
+function showBanner(text, cls, color) {
+  if (S?.bot) return;
+  banner.className = cls || ''; banner.textContent = text; banner.style.color = color || '';
+  void banner.offsetWidth; banner.classList.add('show');
+}
+/** New weapon: the whole troop flashes in the weapon's colour, a fanfare plays, the name shows at the top. */
+function weaponUp() {
+  const w = WEAPON[S.weapon];
+  for (const s of S.troop) retime(s);
+  if (S.bot) return;
+  S.troopFlash = 0.35;
+  troopRing(w.bolt, 70);
+  showBanner(w.name.toUpperCase(), 'weapon', w.css);
+  sfx.weapon(); buzz(70); freeze(0.06);
+  weaponEl.classList.remove('pop'); void weaponEl.offsetWidth; weaponEl.classList.add('pop');
+}
 function fmtTime(t) { return Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0'); }
 const startTroop = (n) => TROOP.start + (n - 1) * TROOP.startPerLevel;
 
 // ---------------------------------------------------------------- campaign: save, level map, base
-const SAVE_KEY = 'hordeforsvar.v1';
-function freshSave() { return { gold: 0, reserve: 0, maxLevel: 1, stars: {}, up: { barracks: 0, smith: 0, hall: 0 } }; }
+const SAVE_KEY = 'hordeforsvar.v2'; // v2: the bigger base (v1 saves are ignored: their upgrades no longer exist)
+function freshSave() { return { gold: 0, reserve: 0, maxLevel: 1, stars: {}, up: Object.fromEntries(Object.keys(BASE).map((k) => [k, 0])) }; }
 let save = freshSave();
 try { const raw = localStorage.getItem(SAVE_KEY); if (raw) save = { ...freshSave(), ...JSON.parse(raw) }; save.up = { ...freshSave().up, ...save.up }; } catch (e) { /* private mode: play without saving */ }
 function storeSave() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* ignore */ } }
-const reserveCap = () => BASE.barracks.levels[save.up.barracks];
+const upVal = (key) => BASE[key].value(save.up[key]);
+const reserveCap = () => upVal('barracks');
 const fmt = (n) => Math.round(n).toLocaleString('da-DK');
 const starsHtml = (n) => [0, 1, 2].map((k) => `<span class="star${k < n ? ' on' : ''}">★</span>`).join('');
 
@@ -860,12 +922,14 @@ function beginLevel(n) {
   const fromReserve = Math.min(save.reserve, reserveCap());
   save.reserve -= fromReserve;
   storeSave();
-  startLevel(n, startTroop(n) + fromReserve);
+  startLevel(n, startTroop(n) + upVal('training') + fromReserve);
   S.fromReserve = fromReserve;
-  S.weapon = BASE.smith.levels[save.up.smith];
-  for (let k = 0; k < BASE.hall.levels[save.up.hall]; k++) freeHero(S.cx + (k - 0.5) * 3, TROOP_Z + 4, pickHeroKind());
+  S.weapon = upVal('smith');
+  S.mods = { dmg: 1 + upVal('sharp') / 100, rate: 1 + upVal('drill') / 100, hero: 1 + upVal('heroes') / 100, power: 1 + upVal('powder') / 100, gold: 1 + upVal('treasury') / 100, medic: upVal('medic') / 100 };
+  for (const s of S.troop) retime(s);
+  for (let k = 0; k < upVal('hall'); k++) freeHero(S.cx + (k - 0.5) * 3, TROOP_Z + 4, pickHeroKind());
   mapEl.classList.remove('on'); baseEl.classList.remove('on'); document.body.classList.remove('inmenu');
-  if (fromReserve > 0) floaters.add('+' + fromReserve + ' fra kasernen', { x: S.cx, y: 2.6, z: TROOP_Z - 2 }, 'blue', 1.6, 2);
+  if (fromReserve > 0) showBanner('+' + fromReserve + ' fra kasernen', 'blue');
   updateHud(true);
 }
 
@@ -873,16 +937,18 @@ function beginLevel(n) {
 function settleLevel() {
   if (S.settled || S.bot || SNAP) return;
   S.settled = true;
-  save.gold += S.gold;
   if (S.phase === 'won') {
     const st = 1 + (S.count >= S.cfg.stars[0] ? 1 : 0) + (S.count >= S.cfg.stars[1] ? 1 : 0);
     S.stars = st;
+    S.gold += st * S.cfg.gold.star;
     save.stars[S.level] = Math.max(save.stars[S.level] || 0, st);
     save.maxLevel = Math.max(save.maxLevel, S.level + 1);
     const before = save.reserve;
     save.reserve = Math.min(reserveCap(), save.reserve + S.count);
     S.housed = save.reserve - before;
   }
+  S.gold = Math.round(S.gold * S.mods.gold);
+  save.gold += S.gold;
   storeSave();
 }
 
@@ -913,13 +979,6 @@ function openMap() {
 mapPath.addEventListener('click', (e) => { const b = e.target.closest('.node'); if (b && !b.disabled) beginLevel(+b.dataset.n); });
 document.getElementById('playNext').addEventListener('click', () => beginLevel(save.maxLevel));
 
-const UP_ICON = { barracks: '🛡️', smith: '⚒️', hall: '✨' };
-function upNow(key, lv) {
-  const v = BASE[key].levels[lv];
-  if (key === 'barracks') return 'Plads til ' + v + ' soldater';
-  if (key === 'smith') return 'Starter med ' + WEAPON[v].name;
-  return v === 0 ? 'Ingen helte fra start' : v + (v === 1 ? ' helt' : ' helte') + ' fra start';
-}
 function openBase() {
   document.body.classList.add('inmenu');
   overEl.classList.remove('on'); winEl.classList.remove('on'); mapEl.classList.remove('on');
@@ -927,24 +986,32 @@ function openBase() {
   document.getElementById('baseGold').textContent = fmt(save.gold);
   document.getElementById('baseReserve').textContent = fmt(save.reserve) + ' / ' + fmt(reserveCap());
   let html = '';
-  for (const key of Object.keys(BASE)) {
-    const u = BASE[key], lv = save.up[key], max = lv >= u.levels.length - 1;
-    const cost = max ? 0 : u.cost[lv + 1];
-    const pips = u.levels.slice(1).map((_, k) => `<i class="${k < lv ? 'on' : ''}"></i>`).join('');
-    html += `<div class="up"><div class="ico">${UP_ICON[key]}</div><div class="nm">${u.name}</div>
-      <button class="btn gold" data-up="${key}" ${max || save.gold < cost ? 'disabled' : ''}>${max ? 'MAX' : '<span class="coin"></span>' + fmt(cost)}</button>
-      <div class="what">${u.what}</div><div class="now">${upNow(key, lv)}${max ? '' : ' → ' + upNow(key, lv + 1).replace(/^Plads til |^Starter med /, '')}</div><div class="pips">${pips}</div></div>`;
+  for (const g of BASE_GROUPS) {
+    html += `<div class="grp">${g}</div>`;
+    for (const [key, u] of Object.entries(BASE)) {
+      if (u.group !== g) continue;
+      const lv = save.up[key] || 0, max = lv >= u.max, cost = max ? 0 : u.cost(lv);
+      const pips = Array.from({ length: u.max }, (_, k) => `<i class="${k < lv ? 'on' : ''}"></i>`).join('');
+      html += `<div class="up"><div class="ico">${u.icon}</div><div class="nm">${u.name} <small>${lv}/${u.max}</small></div>
+        <button class="btn gold" data-up="${key}" ${max || save.gold < cost ? 'disabled' : ''}>${max ? 'MAX' : '<span class="coin"></span>' + fmt(cost)}</button>
+        <div class="what">${u.what}</div><div class="now">${u.text(u.value(lv))}${max ? '' : ' <b>→ ' + u.text(u.value(lv + 1)) + '</b>'}</div><div class="pips">${pips}</div></div>`;
+    }
   }
-  document.getElementById('baseList').innerHTML = html;
+  const list = document.getElementById('baseList'), top = list.scrollTop;
+  list.innerHTML = html;
+  list.scrollTop = top;
   baseEl.classList.add('on');
 }
 document.getElementById('baseList').addEventListener('click', (e) => {
   const b = e.target.closest('[data-up]');
   if (!b || b.disabled) return;
-  const key = b.dataset.up, u = BASE[key], lv = save.up[key];
-  if (lv >= u.levels.length - 1 || save.gold < u.cost[lv + 1]) return;
-  save.gold -= u.cost[lv + 1]; save.up[key] = lv + 1; storeSave();
+  const key = b.dataset.up, u = BASE[key], lv = save.up[key] || 0;
+  if (lv >= u.max || save.gold < u.cost(lv)) return;
+  save.gold -= u.cost(lv); save.up[key] = lv + 1; storeSave();
+  sfx.coin();
   openBase();
+  const row = document.querySelector(`[data-up="${key}"]`)?.closest('.up');
+  if (row) { row.classList.add('bought'); setTimeout(() => row.classList.remove('bought'), 500); }
 });
 document.getElementById('openBase').addEventListener('click', openBase);
 document.getElementById('baseBack').addEventListener('click', openMap);
@@ -1008,6 +1075,7 @@ function shoot(s, dmg) {
     return false;
   }
   t.pending += dmg;
+  if (!S.bot) sfx.shoot();
   _to.set(t.x + (Math.random() - 0.5) * (t.wall ? 2.4 : t.kind ? 2.6 : t === S.boss ? 0.8 : 0.3), hitHeight(t), t.z + 0.2);
   const hx = _to.x, hy = _to.y, hz = _to.z;
   bolts.fire(_from, _to, 80, () => { t.pending -= dmg; damage(t, dmg, hx, hy, hz); });
@@ -1040,7 +1108,7 @@ function damage(t, dmg, hx, hy, hz) {
   }
   if (t === S.boss) {
     if (!S.boss || S.boss.state === 'dead') return;
-    S.boss.hp -= dmg; S.boss.flash = 0.07; S.boss.dmgAcc = (S.boss.dmgAcc || 0) + dmg;
+    S.boss.hp -= dmg; S.boss.flash = 0.07; if (!S.bot) sfx.bossHit(); S.boss.dmgAcc = (S.boss.dmgAcc || 0) + dmg;
     sparks(hx, hy, hz + 0.3, w.flash[0] / 2.6, w.flash[1] / 2.6, w.flash[2] / 2.6, 2);
     if (S.boss.hp <= 0) killBoss();
     return;
@@ -1058,6 +1126,7 @@ function damage(t, dmg, hx, hy, hz) {
   const before = t.hp;
   t.hp -= dmg; t.flash = 0.09;
   sparks(hx, hy, hz, 1.0, 0.95, 0.85, 2);
+  if (!S.bot) sfx.hit();
   if (t.hp <= 0) { killEnemy(t, true); if (dmg - before > 0.01) pierce(t, dmg - before, hx, hz); }
 }
 
@@ -1097,10 +1166,10 @@ function killEnemy(e, reward) {
   e.crowd.play(e.i, 'Death_C_Skeletons', clock, 1.15);
   if (reward) {
     const T = ENEMY[e.type];
+    if (!S.bot) sfx.kill();
     S.gold += T.gold; S.kills++;
     if (T.troops) {
       gainTroops(T.troops);
-      floaters.add('+' + T.troops, { x: e.x, y: 2.4, z: e.z }, 'gold big', 1.2, 2.6);
       burst(e.x, 1.2, e.z, 40, [2.6, 2.0, 0.5], 9, 0.4);
       flashScreen('rgba(255,210,90,0.9)', 0.3);
     }
@@ -1115,7 +1184,6 @@ function popItem(it) {
   switch (it.kind) {
     case 'plus1': case 'plus5': case 'plus99': {
       const n = it.kind === 'plus1' ? 1 : it.kind === 'plus5' ? 5 : 99;
-      floaters.add('+' + n, p, n >= 99 ? 'gold big' : 'blue', 1.0, 2.6);
       burst(it.x, 0.6, it.z, n >= 99 ? 40 : 14, n >= 99 ? [2.4, 1.6, 0.2] : [0.5, 1.0, 2.6]);
       gainTroops(n);
       if (n >= 99) S.shake = Math.max(S.shake, 0.25);
@@ -1123,14 +1191,14 @@ function popItem(it) {
     }
     case 'weapon': {
       S.weapon = Math.min(WEAPON.length - 1, S.weapon + 1);
-      floaters.add(WEAPON[S.weapon].name.toUpperCase() + '!', p, 'purple big', 1.6, 3);
+      weaponUp();
       burst(it.x, 0.8, it.z, 50, [1.8, 0.8, 3.0], 10, 0.4);
       S.shake = Math.max(S.shake, 0.3);
       break;
     }
     case 'weapon2': {
       S.weapon = Math.min(WEAPON.length - 1, S.weapon + 2);
-      floaters.add(WEAPON[S.weapon].name.toUpperCase() + '!', p, 'purple big', 1.8, 3);
+      weaponUp();
       burst(it.x, 0.8, it.z, 80, [2.6, 1.6, 3.2], 12, 0.45);
       S.shake = Math.max(S.shake, 0.5);
       break;
@@ -1139,7 +1207,7 @@ function popItem(it) {
       statues.release(it.statue); it.statue = -1;
       for (let k = 0; k < 30; k++) puff(it.x + (Math.random() - 0.5) * 1.5, 0.3 + Math.random() * 1.5, it.z, 1, [0.62, 0.6, 0.58], 1.4);
       burst(it.x, 1.0, it.z, 60, [2.2, 1.0, 3.2], 9, 0.4);
-      floaters.add(HERO[it.hero || 'fire'].name + '!', p, 'purple big', 1.8, 3);
+      showBanner(HERO[it.hero || 'fire'].name, 'purple'); sfx.hero(); buzz(50);
       freeHero(it.x, it.z, it.hero || 'fire');
       S.shake = Math.max(S.shake, 0.4);
       break;
@@ -1153,14 +1221,14 @@ function popItem(it) {
       break;
     }
     case 'rapid': {
-      S.rapid = S.cfg.rapidTime;
-      floaters.add('2× SKUD!', p, 'orange big', 1.4, 3);
+      S.rapid = S.cfg.rapidTime * S.mods.power;
+      showBanner('2× SKUD', 'orange'); sfx.power(); buzz(30);
       burst(it.x, 0.8, it.z, 40, [3.0, 1.4, 0.3], 9, 0.4);
       for (const s of S.troop) retime(s);
       break;
     }
     case 'bomb': {
-      floaters.add('BOMBE!', p, 'red big', 1.2, 3);
+      sfx.explosion(true); buzz(80); freeze(0.06);
       detonate();
       break;
     }
@@ -1181,7 +1249,7 @@ function detonate() {
   for (const e of S.enemies) {
     if (e.state !== 'run') continue;
     const d = Math.hypot(e.x - cx, e.z - bestZ);
-    if (d < cfg.bombRadius) { e.hp -= cfg.bombDamage; e.flash = 0.1; if (e.hp <= 0) killEnemy(e, true); }
+    if (d < cfg.bombRadius) { e.hp -= cfg.bombDamage * S.mods.power; e.flash = 0.1; if (e.hp <= 0) killEnemy(e, true); }
   }
   if (S.boss && S.boss.state !== 'dead' && Math.abs(S.boss.z - bestZ) < cfg.bombRadius) { S.boss.hp -= cfg.bombDamage * 4; if (S.boss.hp <= 0) killBoss(); }
   for (let k = 0; k < 140; k++) {
@@ -1198,7 +1266,7 @@ function breakWall(w) {
   S.shake = Math.max(S.shake, 0.6);
   for (let k = 0; k < 40; k++) puff(w.x + (Math.random() - 0.5) * 4.5, Math.random() * 2, w.z, 1, [0.6, 0.58, 0.55], 1.8);
   burst(w.x, 1, w.z, 60, [2.4, 1.4, 0.5], 12, 0.3);
-  floaters.add('MUREN ER NEDE!', { x: w.x, y: 3, z: w.z }, 'gold', 1.4, 2);
+  sfx.wall(); buzz(40);
 }
 
 function killBoss() {
@@ -1208,7 +1276,7 @@ function killBoss() {
   S.gold += S.cfg.gold.boss;
   S.shake = 0.9;
   flashScreen('rgba(255,240,200,1)', 0.75);
-  floaters.add('+' + S.cfg.gold.boss + ' guld', { x: b.x, y: 4, z: b.z }, 'gold big', 1.6, 3);
+  sfx.explosion(true); sfx.win(); buzz([60, 40, 120]); freeze(0.15);
   for (let k = 0; k < 90; k++) glow.emit(b.x + (Math.random() - 0.5) * 2, 1 + Math.random() * 3, b.z, (Math.random() - 0.5) * 14, 2 + Math.random() * 10, (Math.random() - 0.5) * 10, 2.6, 0.6, 0.2, 0.45, 0.9, 10);
   for (let k = 0; k < 30; k++) puff(b.x, 0.5, b.z, 1, [0.7, 0.66, 0.6], 2.2);
   for (const e of S.enemies) if (e.state === 'run') killEnemy(e, true); // the horde collapses with its king
@@ -1221,7 +1289,7 @@ function killCaster(c) {
   casters.play(c.i, 'Death_C_Skeletons', clock, 1);
   const r = S.cfg.caster;
   S.gold += r.gold; gainTroops(r.troops);
-  floaters.add('+' + r.troops, { x: c.x, y: 3, z: c.z }, 'gold big', 1.5, 3);
+  sfx.explosion(false); freeze(0.05);
   burst(c.x, 1.5, c.z, 70, [1.8, 0.6, 3.0], 11, 0.45);
   flashScreen('rgba(190,120,255,0.95)', 0.45);
   S.shake = Math.max(S.shake, 0.4);
@@ -1243,6 +1311,7 @@ function updateCasters(dt, playing) {
         c.cast = cfg.interval;
         // a purple orb arcs over to the troop and takes soldiers with it
         S.orbs.push({ x: c.x, y: 2.2, z: c.z + 0.5, t: 0, dur: 0.9, kills: cfg.kills });
+        sfx.orb();
         glow.emit(c.x, 2.2, c.z + 0.5, 0, 0.5, 0, 1.8, 0.5, 3.2, 1.6, 0.2);
       }
     }
@@ -1273,6 +1342,7 @@ function killSoldier(s) {
   visibleAlive--;
   soldiers.play(s.i, 'Death_A', clock, 1.2);
   glow.emit(s.x, 0.8, s.z, 0, 1, 0, 0.6, 1.2, 3, 0.9, 0.18);
+  for (let k = 0; k < 6; k++) glow.emit(s.x, 0.6, s.z, (Math.random() - 0.5) * 4, 1.5 + Math.random() * 3, (Math.random() - 0.5) * 4, 2.6, 0.25, 0.15, 0.3, 0.45, 9); // red sparks: a soldier falls
 }
 
 function nearestSoldier(x, z) {
@@ -1318,16 +1388,17 @@ function castFireball(h) {
   const c = HERO[h.kind].col;
   if (h.kind === 'heal') {
     // the healer brings fallen soldiers back to their feet
-    const n = S.cfg.heroHeal;
-    gainTroops(n);
-    floaters.add('+' + n, { x: S.cx, y: 2.2, z: TROOP_Z }, 'green', 0.9, 1.6);
+    const n = Math.round(S.cfg.heroHeal * S.mods.hero);
+    gainTroops(n, true);
+    sfx.heal();
     for (let k = 0; k < 24; k++) glow.emit(S.cx + (Math.random() - 0.5) * troopRadius() * 2, 0.3, TROOP_Z + (Math.random() - 0.5) * troopRadius() * 1.4, 0, 2 + Math.random() * 2, 0, c[0], c[1], c[2], 0.35, 0.8, -1);
     glow.emit(h.x, 1.8, h.z, 0, 0.4, 0, c[0], c[1], c[2], 1.4, 0.2);
     return;
   }
   const t = heroTarget(h);
   if (!t) return;
-  const dmg = S.cfg.heroDamage * WEAPON[S.weapon].mul * (h.kind === 'frost' ? 0.5 : 1);
+  const dmg = S.cfg.heroDamage * S.mods.hero * WEAPON[S.weapon].mul * (h.kind === 'frost' ? 0.5 : 1);
+  if (h.kind === 'frost') sfx.frost(); else sfx.fireball();
   S.fireballs.push({ kind: h.kind, x: h.x, y: 1.5, z: h.z - 0.6, tx: t.x, ty: hitHeight(t), tz: t.z + 0.4, t: 0, dur: Math.max(0.15, Math.hypot(t.x - h.x, t.z - h.z) / 42), target: t, dmg });
   glow.emit(h.x, 1.6, h.z - 0.6, 0, 0.5, 0, c[0], c[1], c[2], 1.4, 0.15);
 }
@@ -1347,7 +1418,7 @@ function updateFireballs(dt) {
       if (e.state !== 'run') continue;
       if ((e.x - f.tx) ** 2 + (e.z - f.tz) ** 2 < R * R) {
         e.hp -= f.dmg; e.flash = 0.1;
-        if (f.kind === 'frost') e.slow = S.cfg.frostSlow; // frozen: crawls for a few seconds
+        if (f.kind === 'frost') e.slow = S.cfg.frostSlow * S.mods.hero; // frozen: crawls for a few seconds
         if (e.hp <= 0) killEnemy(e, true);
       }
     }
@@ -1450,9 +1521,9 @@ function update(dt) {
     for (const ev of S.timeline) {
       if (ev.done || p < ev.at) continue;
       ev.done = true;
-      if (ev.type === 'rush') { S.rush = cfg.rush.time; showBanner('STORMLØB!', 'red'); }
+      if (ev.type === 'rush') { S.rush = cfg.rush.time; showBanner('STORMLØB', 'red'); sfx.warn(); }
       if (ev.type === 'caster') spawnCaster(ev.lane ?? (Math.random() < 0.5 ? LEFT : RIGHT));
-      if (ev.type === 'mult') { addItem('mult', MID, SPAWN_Z, cfg.mult.hp); showBanner('×2 PORT!', 'blue'); }
+      if (ev.type === 'mult') { addItem('mult', MID, SPAWN_Z, cfg.mult.hp); showBanner('×2 PORT', 'blue'); }
     }
     // a new row enters every time the mass has advanced one row gap: the lane never empties behind it
     S.rowAcc += S.hordeSpeed * dt;
@@ -1487,7 +1558,7 @@ function update(dt) {
   // ---- targets & shooting
   buildTargets();
   const weight = visibleAlive > 0 ? S.count / visibleAlive : 1; // each drawn soldier fires for this many
-  const dmg = TROOP.boltDamage * WEAPON[S.weapon].mul * Math.max(1, weight);
+  const dmg = TROOP.boltDamage * WEAPON[S.weapon].mul * Math.max(1, weight) * S.mods.dmg;
   bolts.setColor(WEAPON[S.weapon].bolt);
   let k = 0;
   for (const s of S.troop) {
@@ -1522,6 +1593,7 @@ function update(dt) {
     } else if (S.phase === 'won' && s.state !== 'run' && s.state !== 'cheer') {
       s.state = 'cheer'; soldiers.play(s.i, 'Cheer', clock, 0.9 + Math.random() * 0.2, Math.random());
     }
+    if (S.troopFlash > -0.1) soldiers.flash(s.i, Math.max(0, S.troopFlash) * 4);
     soldiers.setTransform(s.i, s.x, 0, s.z, s.yaw, 1);
     blob(s.x, s.z, 0.85);
   }
@@ -1607,12 +1679,14 @@ function update(dt) {
   updateBearer(dt);
   updateFires(dt);
   updateDamageNumbers(dt);
+  updateDelta(dt);
+  if (S.troopFlash > -0.1) S.troopFlash -= dt;
 
   // ---- pickups and walls ride the conveyor; walls hold back whatever is behind them in their lane
   updateConveyor(dt);
 
   // ---- end of level
-  if (playing && S.count <= 0) { S.phase = 'lost'; S.endT = 0; }
+  if (playing && S.count <= 0) { S.phase = 'lost'; S.endT = 0; if (!S.bot) { sfx.defeat(); buzz(200); } }
   if (S.phase === 'lost' || S.phase === 'won') {
     S.endT += dt;
     if (S.endT >= 1.6 && S.endT - dt < 1.6 && !S.bot) showEnd();
@@ -1722,7 +1796,7 @@ function updateCamera(dt) {
   if (params.has('cam')) { const c = params.get('cam').split(',').map(Number); camera.position.set(c[0], c[1], c[2]); camera.lookAt(c[3], c[4], c[5]); }
   camera.updateMatrixWorld();
   troopLabelPos.set(S.cx, 3.9, TROOP_Z - troopRadius() * 0.72 - 1.0).project(camera);
-  troopEl.style.transform = `translate(${(troopLabelPos.x * 0.5 + 0.5) * window.innerWidth}px, ${(-troopLabelPos.y * 0.5 + 0.5) * window.innerHeight}px) translate(-50%, -100%)`;
+  troopEl.style.setProperty('--tp', `translate(${(troopLabelPos.x * 0.5 + 0.5) * window.innerWidth}px, ${(-troopLabelPos.y * 0.5 + 0.5) * window.innerHeight}px) translate(-50%, -100%)`);
 }
 
 resize();
@@ -1745,7 +1819,7 @@ function adapt(dt) {
   fpsAcc += dt; fpsN++; fpsT += dt;
   if (fpsT > 2) {
     const fps = fpsN / fpsAcc;
-    if (fps < 48 && pixelRatio > 1) { pixelRatio = Math.max(1, pixelRatio - 0.25); resize(); }
+    if (fps < 45 && pixelRatio > MIN_PR) { pixelRatio = Math.max(MIN_PR, pixelRatio - 0.25); resize(); }
     else if (fps < 30 && sun.shadow.mapSize.x > 1024) { sun.shadow.mapSize.set(1024, 1024); sun.shadow.map?.dispose(); sun.shadow.map = null; }
     fpsAcc = fpsN = fpsT = 0;
   }
@@ -1754,8 +1828,9 @@ function adapt(dt) {
 let last = performance.now();
 const debug = document.getElementById('debug');
 function frame(now) {
-  const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
+  let dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
   last = now;
+  if (hitStop > 0) { hitStop -= dt; dt *= 0.08; }
   update(dt);
   updateCamera(dt);
   floaters.update(dt, window.innerWidth, window.innerHeight);
@@ -1783,7 +1858,7 @@ window.__game = {
       S.stats.lane[laneOf(S.cx)]++;
       if (i % 300 === 0) trace.push(`${Math.round(S.t)}s:${S.count}/w${S.weapon}/h${S.heroList.length}/c${S.casterList.filter((c) => c.state !== "dead").length}/f${Math.round(TROOP_Z - S.enemies.reduce((m, e) => e.state === "run" && e.lane === MID ? Math.max(m, e.z) : m, -99))}`);
     }
-    const out = { bot, level, result: S.phase, t: Math.round(S.t), troop: S.count, peak, weapon: S.weapon, kills: S.kills, ev: S.stats.ev, pop: S.stats.pop, lane: S.stats.lane.map((v) => Math.round(v / 30)), boss: S.boss ? Math.max(0, Math.round(S.boss.hp)) : null, trace: trace.join(' ') };
+    const out = { bot, level, result: S.phase, gold: Math.round(S.gold), t: Math.round(S.t), troop: S.count, peak, weapon: S.weapon, kills: S.kills, ev: S.stats.ev, pop: S.stats.pop, lane: S.stats.lane.map((v) => Math.round(v / 30)), boss: S.boss ? Math.max(0, Math.round(S.boss.hp)) : null, trace: trace.join(' ') };
     S.bot = null;
     return out;
   },

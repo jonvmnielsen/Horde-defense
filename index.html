@@ -27,7 +27,7 @@
   .pill.small { padding: 6px 12px; font-size: 17px; color: #ffb066; display: none; }
   .pill.small.on { display: inline-flex; }
   .coin { width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff3b0, var(--gold) 45%, #c47a00); box-shadow: inset 0 -2px 0 rgba(0,0,0,0.25); }
-  #troop { position: absolute; left: 0; top: 0; background: var(--blue); border: 3px solid #fff; color: #fff; border-radius: 12px; padding: 2px 12px; font-size: 22px; box-shadow: 0 3px 0 var(--blue-dark), 0 4px 10px var(--shadow); white-space: nowrap; will-change: transform; }
+  #troop { transform: var(--tp); position: absolute; left: 0; top: 0; background: var(--blue); border: 3px solid #fff; color: #fff; border-radius: 12px; padding: 2px 12px; font-size: 22px; box-shadow: 0 3px 0 var(--blue-dark), 0 4px 10px var(--shadow); white-space: nowrap; will-change: transform; }
   #bossbar { position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 92px); left: 50%; transform: translateX(-50%); width: min(72vw, 380px); opacity: 0; transition: opacity .3s; }
   #bossbar.on { opacity: 1; }
   #bossbar .name { text-align: center; font-size: 16px; letter-spacing: 2px; text-shadow: 0 2px 0 #000; margin-bottom: 4px; }
@@ -43,10 +43,30 @@
   .floater.orange { color: #ffc28a; -webkit-text-stroke-color: #6a2200; }
   .floater.red { color: #ff6a55; -webkit-text-stroke-color: #5a0d06; font-size: 22px; }
   .floater.red.big { font-size: 36px; }
-  #banner { position: absolute; top: 34%; left: 0; right: 0; text-align: center; font-size: min(64px, 14vw); color: var(--red); -webkit-text-stroke: 7px #3a0603; paint-order: stroke fill; opacity: 0; transform: scale(0.6); }
-  #banner.show { animation: banner 1.8s ease-out forwards; }
+  /* event text sits at the top, under the progress bar: the lanes stay free to watch */
+  #banner { position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 80px); left: 0; right: 0; text-align: center; font-size: 30px; letter-spacing: 1px; color: var(--red); -webkit-text-stroke: 5px #3a0603; paint-order: stroke fill; opacity: 0; }
+  #banner.show { animation: banner 1.6s ease-out forwards; }
   #banner.blue { color: #fff; -webkit-text-stroke-color: var(--blue-dark); }
-  #banner.purple { color: #e3c2ff; -webkit-text-stroke-color: #3b0a7a; font-size: 34px; }
+  #banner.purple { color: #e3c2ff; -webkit-text-stroke-color: #3b0a7a; }
+  #banner.orange { color: #ffc28a; -webkit-text-stroke-color: #6a2200; }
+  #banner.weapon { -webkit-text-stroke-color: #1a1030; font-size: 34px; }
+  body.bossbar #banner { top: calc(max(12px, env(safe-area-inset-top)) + 126px); }
+  #troop.gain { animation: tUp .35s ease-out; }
+  #troop.loss { animation: tDown .35s ease-out; }
+  @keyframes tUp { 30% { background: #2fbf5a; } }
+  @keyframes tDown { 30% { background: #e0322b; } }
+  #troop b { display: inline-block; }
+  #troop.gain b { animation: tScale .35s ease-out; }
+  #troop.loss b { animation: tShake .3s linear; }
+  @keyframes tScale { 30% { transform: scale(1.3); } }
+  @keyframes tShake { 25% { transform: translateX(-4px); } 50% { transform: translateX(4px); } 75% { transform: translateX(-2px); } }
+  #troop .delta { background: none; border: 0; padding: 0; box-shadow: none; border-radius: 0; width: auto; position: absolute; left: 100%; top: 50%; margin-left: 6px; transform: translateY(-50%); font-style: normal; font-size: 20px; opacity: 0; transition: opacity .25s; -webkit-text-stroke: 4px #0b2f8a; paint-order: stroke fill; }
+  #troop .delta.plus { opacity: 1; color: #8dffa8; -webkit-text-stroke-color: #0a4a12; }
+  #troop .delta.minus { opacity: 1; color: #ff7a6a; -webkit-text-stroke-color: #5a0d06; }
+  .pill.weapon.pop { animation: wpop .6s ease-out; }
+  @keyframes wpop { 25% { transform: scale(1.3); box-shadow: 0 0 24px var(--wc); } }
+  #mute { pointer-events: auto; font-size: 18px; width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--panel); color: #fff; box-shadow: 0 2px 8px var(--shadow); cursor: pointer; padding: 0; }
+  .topbar .left { display: flex; gap: 8px; align-items: center; }
   #progress { position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 48px); left: 50%; transform: translateX(-50%); width: min(80vw, 400px); display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px; }
   #progress .lvl { font-size: 16px; letter-spacing: 1px; text-shadow: 0 2px 0 rgba(0,0,0,0.5); white-space: nowrap; }
   #progress .track { position: relative; height: 16px; border-radius: 9px; background: rgba(10, 16, 28, 0.6); border: 2px solid rgba(255,255,255,0.9); }
@@ -56,7 +76,7 @@
   #progress.boss .skull { animation: pulse .8s ease-in-out infinite; }
   @keyframes pulse { 50% { transform: translateY(-50%) scale(1.25); } }
   @media (prefers-reduced-motion: reduce) { #progress.boss .skull, #hint .hand { animation: none; } }
-  @keyframes banner { 0% { opacity: 0; transform: scale(2.2); } 12% { opacity: 1; transform: scale(1); } 75% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0; transform: scale(1.1); } }
+  @keyframes banner { 0% { opacity: 0; transform: translateY(-10px) scale(1.3); } 12% { opacity: 1; transform: none; } 78% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-6px); } }
   #hint { position: absolute; bottom: max(28px, env(safe-area-inset-bottom)); left: 0; right: 0; text-align: center; font-size: 20px; text-shadow: 0 2px 0 rgba(0,0,0,0.5); transition: opacity .5s; }
   #hint .hand { display: inline-block; animation: swipe 1.6s ease-in-out infinite; }
   @keyframes swipe { 0%, 100% { transform: translateX(-40px); } 50% { transform: translateX(40px); } }
@@ -110,6 +130,13 @@
   .up .pips { grid-column: 2; display: flex; gap: 4px; }
   .up .pips i { width: 18px; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.2); }
   .up .pips i.on { background: var(--gold); }
+  .up .pips { flex-wrap: wrap; }
+  .up .pips i { width: 12px; }
+  .up .nm small { font-size: 14px; opacity: 0.7; }
+  .up .now b { color: #8dffa8; font-weight: 400; }
+  .up.bought { animation: bought .5s ease-out; }
+  @keyframes bought { 30% { background: rgba(255, 197, 51, 0.35); transform: scale(1.02); } }
+  .grp { font-size: 18px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin: 6px 4px -2px; }
   .winstars { font-size: 52px; letter-spacing: 4px; margin: -4px 0 6px; -webkit-text-stroke: 5px #3a2200; paint-order: stroke fill; }
   .winstars .star { display: inline-block; }
   .winstars .star.on { animation: starpop .5s cubic-bezier(.3,1.6,.5,1) backwards; }
@@ -125,7 +152,7 @@
 <div id="floaters"></div>
 <div id="hud">
   <div class="topbar">
-    <div class="pill"><span class="coin"></span><span id="gold">0</span></div>
+    <div class="left"><div class="pill"><span class="coin"></span><span id="gold">0</span></div><button id="mute" aria-label="Lyd til/fra">🔊</button></div>
     <div class="right">
       <div class="pill small" id="rapid">2× <b>0 s</b></div>
       <div class="pill weapon" id="weapon"><span class="bolt" aria-hidden="true"></span><b>Armbrøst</b></div>
@@ -168,7 +195,7 @@
 </div>
 <div class="menu" id="base">
   <h1>Basen</h1>
-  <div class="sub" id="baseSub">Guld fra hver bane bygger basen.</div>
+  <div class="sub" id="baseSub">Guld fra hver bane bygger basen. Stjerner giver ekstra guld.</div>
   <div class="bar"><div class="pill"><span class="coin"></span><span id="baseGold">0</span></div><div class="pill"><span class="ico">🛡️</span><span id="baseReserve">0</span></div></div>
   <div id="baseList"></div>
   <div class="foot"><button class="btn" id="baseBack">Til kortet</button></div>

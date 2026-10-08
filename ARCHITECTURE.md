@@ -6,6 +6,7 @@ src/main.js           opsætning (renderer, lys, post-processing), spillogik, HU
 src/vat.js            bager glTF-animationer til teksturer + instanced "Crowd"-pulje
 src/world.js          statisk miljø: spor, gårdsplads, kirkegård, ruiner, skov, himmel
 src/fx.js             partikler, armbrøstbolte, flydende tal
+src/audio.js          syntetiserede lydeffekter (WebAudio) og vibration; låses op ved første berøring
 src/props.js          PropSet: instanced kopier af en statisk model (kister, kasser, porte)
 src/levels.js         al balance: banelængde, fjendetal, liv, mur, boss, guld
 tools/sim.py          spiller hele baner headless med bots og printer resultatet
@@ -45,3 +46,9 @@ Ved indlæsning afspilles hver valgt animation på CPU'en, og hver vertex' posit
 - Kampagne: `save` i localStorage (`hordeforsvar.v1`: guld, kaserne-reserve, låst op til, stjerner, opgraderinger). `beginLevel(n)` anvender basen (reserve, startvåben, startHelte) og kalder `startLevel`; `settleLevel()` bogfører resultatet én gang. Fasen `menu` fryser slagmarken bag kort/base.
 - `BASE` og `LEVEL_COUNT` i levels.js; stjerner efter overlevende (`stars`).
 - Test-parametre: `snap` (direkte i spillet, ingen menu), `level=`, `boss`, `mult`, `heroes`, `menu=map|base`, `gold=`.
+
+## Runde 9: feedback og base
+- `troopDelta(n)` viser "+N"/"-N" ved tælleren og får den til at hoppe; kaldes fra `gainTroops`/`loseTroops`.
+- `showBanner()` skriver øverst (CSS `#banner`); `weaponUp()` samler alt ved nyt våben; `freeze(t)` giver hit-stop i `frame()`.
+- `BASE` i levels.js: hver opgradering har `max`, `cost(lv)`, `value(lv)`, `text(v)` og en gruppe. `beginLevel` omsætter dem til `S.mods` (dmg, rate, hero, power, gold, medic) og startsoldater.
+- Gemt spil: `hordeforsvar.v2`.
