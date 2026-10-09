@@ -28,7 +28,7 @@
   .pill.small.on { display: inline-flex; }
   .coin { width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff3b0, var(--gold) 45%, #c47a00); box-shadow: inset 0 -2px 0 rgba(0,0,0,0.25); }
   #troop { transform: var(--tp); position: absolute; left: 0; top: 0; background: var(--blue); border: 3px solid #fff; color: #fff; border-radius: 12px; padding: 2px 12px; font-size: 22px; box-shadow: 0 3px 0 var(--blue-dark), 0 4px 10px var(--shadow); white-space: nowrap; will-change: transform; }
-  #bossbar { position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 92px); left: 50%; transform: translateX(-50%); width: min(72vw, 380px); opacity: 0; transition: opacity .3s; }
+  #bossbar { position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 98px); left: 50%; transform: translateX(-50%); width: min(72vw, 380px); opacity: 0; transition: opacity .3s; }
   #bossbar.on { opacity: 1; }
   #bossbar .name { text-align: center; font-size: 16px; letter-spacing: 2px; text-shadow: 0 2px 0 #000; margin-bottom: 4px; }
   #bossbar .track { height: 14px; border-radius: 8px; background: rgba(0,0,0,0.55); border: 2px solid #fff; overflow: hidden; }
@@ -44,13 +44,13 @@
   .floater.red { color: #ff6a55; -webkit-text-stroke-color: #5a0d06; font-size: 22px; }
   .floater.red.big { font-size: 36px; }
   /* event text sits at the top, under the progress bar: the lanes stay free to watch */
-  #banner { position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 80px); left: 0; right: 0; text-align: center; font-size: 30px; letter-spacing: 1px; color: var(--red); -webkit-text-stroke: 5px #3a0603; paint-order: stroke fill; opacity: 0; }
+  #banner { position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 100px); left: 0; right: 0; text-align: center; font-size: 30px; letter-spacing: 1px; color: var(--red); -webkit-text-stroke: 5px #3a0603; paint-order: stroke fill; opacity: 0; }
   #banner.show { animation: banner 1.6s ease-out forwards; }
   #banner.blue { color: #fff; -webkit-text-stroke-color: var(--blue-dark); }
   #banner.purple { color: #e3c2ff; -webkit-text-stroke-color: #3b0a7a; }
   #banner.orange { color: #ffc28a; -webkit-text-stroke-color: #6a2200; }
   #banner.weapon { -webkit-text-stroke-color: #1a1030; font-size: 34px; }
-  body.bossbar #banner { top: calc(max(12px, env(safe-area-inset-top)) + 126px); }
+  body.bossbar #banner { top: calc(max(12px, env(safe-area-inset-top)) + 140px); }
   #troop.gain { animation: tUp .35s ease-out; }
   #troop.loss { animation: tDown .35s ease-out; }
   @keyframes tUp { 30% { background: #2fbf5a; } }
@@ -162,6 +162,46 @@
   .hp.low s { background: #ff4d3a; }
   @keyframes lowp { 50% { transform: scale(1.15); } }
   body.inmenu #tags { visibility: hidden; }
+  .gl { position: absolute; left: 0; top: 0; font-size: 46px; line-height: 1; color: #fff; -webkit-text-stroke: 7px #0b2f8a; paint-order: stroke fill; will-change: transform; text-shadow: 0 4px 0 rgba(0,0,0,0.3); }
+  .gl.minus { color: #ffd6d0; -webkit-text-stroke-color: #7a0b05; }
+  .gl.mul { color: #fff1b0; -webkit-text-stroke-color: #7a4a00; }
+  .gl.up { color: #b8ffc8; }
+  #starbar { position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 74px); left: 50%; transform: translateX(-50%); display: flex; gap: 12px; font-size: 14px; }
+  #starbar .s { color: rgba(255,255,255,0.35); -webkit-text-stroke: 3px rgba(0,0,0,0.5); paint-order: stroke fill; white-space: nowrap; }
+  #starbar .s b { font-weight: 400; margin-left: 3px; font-size: 13px; }
+  #starbar .s.on { color: var(--gold); -webkit-text-stroke-color: #5a3000; }
+  body.endless #starbar { display: none; }
+  .btn.red { background: linear-gradient(#ff7a5a, #c4281a); box-shadow: 0 4px 0 #6a0d05; }
+  .btn small { display: block; font-size: 12px; opacity: 0.85; }
+  .menu .foot { flex-wrap: wrap; }
+  /* the 3D base: the village shows through, only the bar, the labels and the panel take touches */
+  .menu.basev { background: none; padding: 0; pointer-events: none; }
+  .menu.basev.on > * { pointer-events: auto; }
+  .btop { position: absolute; top: max(12px, env(safe-area-inset-top)); left: 12px; right: 12px; display: flex; gap: 8px; align-items: center; }
+  .btn.small { font-size: 17px; padding: 6px 14px; }
+  #baseLabels { position: absolute; inset: 0; pointer-events: none !important; }
+  .plabel { position: absolute; left: 0; top: 0; pointer-events: auto; font-size: 13px; white-space: nowrap; background: rgba(16, 22, 34, 0.78); border: 2px solid rgba(255,255,255,0.7); border-radius: 12px; padding: 3px 9px; cursor: pointer; }
+  .plabel b { font-weight: 400; color: var(--gold); margin-left: 3px; }
+  .plabel small { font-size: 11px; opacity: 0.8; margin-left: 4px; }
+  .plabel i { font-style: normal; color: #8dffa8; margin-left: 4px; animation: lowp .8s ease-in-out infinite; display: inline-block; }
+  .plabel.site { background: rgba(120, 70, 10, 0.85); border-color: var(--gold); }
+  .plabel.locked { opacity: 0.75; }
+  .plabel.sel { border-color: var(--gold); box-shadow: 0 0 12px rgba(255, 210, 63, 0.8); }
+  .plabel.can { border-color: #8dffa8; }
+  .plabel.square { pointer-events: none; text-align: center; }
+  .plabel.square small { display: block; margin: 0; }
+  #basePanel { position: absolute; left: 12px; right: 12px; bottom: max(14px, env(safe-area-inset-bottom)); background: rgba(16, 22, 34, 0.88); border: 2px solid rgba(255,255,255,0.75); border-radius: 18px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .bp-hint { text-align: center; font-size: 16px; opacity: 0.85; padding: 6px; }
+  .bp-head { display: flex; gap: 10px; align-items: center; }
+  .bp-ico { font-size: 30px; width: 46px; height: 46px; display: grid; place-items: center; background: rgba(255,255,255,0.12); border-radius: 12px; }
+  .bp-name { font-size: 21px; } .bp-name small { font-size: 13px; opacity: 0.7; }
+  .bp-what { font-size: 13px; opacity: 0.8; font-family: system-ui, sans-serif; }
+  .bp-now { font-size: 16px; color: #9fd0ff; } .bp-now b { color: #8dffa8; font-weight: 400; }
+  #basePanel .pips { display: flex; gap: 4px; flex-wrap: wrap; }
+  #basePanel .pips i { width: 14px; height: 7px; border-radius: 4px; background: rgba(255,255,255,0.2); }
+  #basePanel .pips i.on { background: var(--gold); }
+  #basePanel .btn { align-self: stretch; display: flex; justify-content: center; align-items: center; gap: 6px; }
+  #basePanel .btn .coin { width: 20px; height: 20px; }
   #debug { position: absolute; bottom: 4px; left: 6px; font: 11px/1.2 ui-monospace, monospace; color: #fff; text-shadow: 0 1px 0 #000; }
 </style>
 <canvas id="c"></canvas>
@@ -176,6 +216,7 @@
     </div>
   </div>
   <div id="progress"><span class="lvl" id="levelLabel">BANE 1</span><div class="track"><div class="fill"></div><span class="skull" aria-hidden="true">💀</span></div></div>
+  <div id="starbar"><span class="s on">★</span><span class="s">★★<b>300</b></span><span class="s">★★★<b>700</b></span></div>
   <div id="bossbar"><div class="name">SKELETKONGEN</div><div class="track"><i></i></div></div>
   <div id="troop"><b>0</b></div>
   <div id="banner"></div>
@@ -185,7 +226,7 @@
 <div id="over">
   <div class="card">
     <h2>Truppen er faldet</h2>
-    <div class="row"><span>Nået</span><span id="overProgress">0 %</span></div>
+    <div class="row"><span id="overProgressLabel">Nået</span><span id="overProgress">0 %</span></div>
     <div class="row"><span>Guld</span><span id="overGold">0</span></div>
     <div class="row"><span>Drab</span><span id="overKills">0</span></div>
     <div class="row"><span>Tid</span><span id="overTime">0:00</span></div>
@@ -208,14 +249,12 @@
   <h1>Felttoget</h1>
   <div class="bar"><div class="pill"><span class="coin"></span><span id="mapGold">0</span></div><div class="pill"><span class="ico">🛡️</span><span id="mapReserve">0</span></div></div>
   <div id="mapPath"></div>
-  <div class="foot"><button class="btn gold" id="openBase">Base</button><button class="btn" id="playNext">Spil bane 1</button></div>
+  <div class="foot"><button class="btn gold" id="openBase">Base</button><button class="btn" id="playNext">Spil bane 1</button><button class="btn red" id="playEndless">Endeløs</button></div>
 </div>
-<div class="menu" id="base">
-  <h1>Basen</h1>
-  <div class="sub" id="baseSub">Guld fra hver bane bygger basen. Stjerner giver ekstra guld.</div>
-  <div class="bar"><div class="pill"><span class="coin"></span><span id="baseGold">0</span></div><div class="pill"><span class="ico">🛡️</span><span id="baseReserve">0</span></div></div>
-  <div id="baseList"></div>
-  <div class="foot"><button class="btn" id="baseBack">Til kortet</button></div>
+<div class="menu basev" id="base">
+  <div class="btop"><button class="btn small" id="baseBack">‹ Kort</button><div class="pill"><span class="coin"></span><span id="baseGold">0</span></div><div class="pill"><span class="ico">🛡️</span><span id="baseReserve">0</span></div></div>
+  <div id="baseLabels"></div>
+  <div id="basePanel"></div>
 </div>
 <div id="loading"><div style="text-align:center">Indlæser<div class="bar"><i></i></div></div></div>
 <script type="module" src="game.js"></script>

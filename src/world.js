@@ -1,7 +1,7 @@
 // Static environment: lanes, courtyard, ruined graveyard surroundings, sky.
 import * as THREE from 'three';
 
-export const LANE_W = 7.5;
+export const LANE_W = 8.4; // wide lanes: crossing from one side lane to the other is a real decision
 export const LANES = [-LANE_W, 0, LANE_W]; // lane centre x
 export const LANE_START_Z = -78; // far end
 export const LANE_END_Z = -9; // where lanes open into the courtyard

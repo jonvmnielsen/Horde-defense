@@ -7,7 +7,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { PropSet } from './props.js';
-import { sfx, buzz, unlockAudio, isMuted, setMuted, preloadAudio, setHordeLevel, panOf } from './audio.js';
+import { BaseView, PLOTS } from './base.js';
+import { sfx, buzz, unlockAudio, isMuted, setMuted, preloadAudio, setHordeLevel, setFireLevel, setMusic, panOf } from './audio.js';
 preloadAudio();
 import { bakeCharacter, createVatMaterial, Crowd, setVatTime } from './vat.js';
 import { buildWorld, makeSky, LANES, LANE_W, LANE_END_Z, EDGE } from './world.js';
@@ -59,7 +60,8 @@ scene.add(sun, sun.target);
 // post-processing
 const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
 const composer = new EffectComposer(renderer, rt);
-composer.addPass(new RenderPass(scene, camera));
+const renderPass = new RenderPass(scene, camera);
+composer.addPass(renderPass);
 const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.32, 0.3, 0.95); // only the brightest sparks glow
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
@@ -82,7 +84,7 @@ function resize() {
   camera.fov = THREE.MathUtils.clamp(vfov, 40, 84);
   camera.updateProjectionMatrix();
 }
-window.addEventListener('resize', resize);
+window.addEventListener('resize', () => { resize(); baseView?.resize(window.innerWidth, window.innerHeight); });
 
 // ---------------------------------------------------------------- loading
 const loader = new GLTFLoader();
@@ -275,6 +277,58 @@ function updateTags() {
     if (S.boss && S.boss.state !== 'dead') tag(S.boss.x, 7.6, S.boss.z, S.boss.hp, S.boss.max, 'boss');
   }
   for (let k = tagN; k < tagPool.length; k++) if (tagPool[k].el.style.display !== 'none') tagPool[k].el.style.display = 'none';
+}
+
+// ---------------------------------------------------------------- number gates: a lane-wide arch with a coloured panel and a big number
+const gateArches = {};
+const gatePanels = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }), 12);
+gatePanels.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(36), 3);
+gatePanels.frustumCulled = false; gatePanels.count = 0; gatePanels.renderOrder = 3;
+scene.add(gatePanels);
+for (const [k, tint, glowc] of [['plus', [0.55, 0.8, 1.6], [0, 0.08, 0.25]], ['minus', [1.6, 0.5, 0.45], [0.25, 0.02, 0]], ['mul', [1.6, 1.25, 0.45], [0.25, 0.15, 0]]]) {
+  gateArches[k] = new PropSet(scene, envLib0('arch_gate'), 12, { tint, emissive: glowc });
+}
+const GATE_COL = { plus: new THREE.Color(0.25, 0.55, 1.6), minus: new THREE.Color(1.6, 0.18, 0.12), mul: new THREE.Color(1.5, 1.1, 0.2) };
+const gateLabelPool = [];
+function drawGates() {
+  for (const a of Object.values(gateArches)) a.begin();
+  let n = 0, ln = 0;
+  if (S.phase !== 'menu') for (const g of S.gates) {
+    if (!g.alive || n >= 12) continue;
+    const kind = g.op === 'mul' ? 'mul' : g.v > 0 ? 'plus' : 'minus';
+    const set = gateArches[kind];
+    const sx = (LANE_W * 0.92) / set.size.x, sy = 1.25;
+    const bump = g.flash > 0 ? 1.04 : 1;
+    _p.set(g.x - set.center.x * sx * bump, -set.min.y * sy, g.z - set.center.z * sx * 0.6); _s.set(sx * bump, sy * bump, sx * 0.6); _q.identity(); // centred on the lane
+    _m.compose(_p, _q, _s);
+    set.add(_m, g.flash > 0 ? 1.8 : 1);
+    // translucent coloured panel inside the arch
+    _p.set(g.x, set.size.y * sy * 0.42, g.z + 0.05); _s.set(set.size.x * sx * 0.78, set.size.y * sy * 0.78, 1);
+    _m.compose(_p, _q, _s);
+    gatePanels.setMatrixAt(n, _m);
+    const c = GATE_COL[kind], f = g.flash > 0 ? 1.6 : 1;
+    gatePanels.instanceColor.setXYZ(n, c.r * f, c.g * f, c.b * f);
+    n++;
+    // the number, big and crisp (HTML), in the arch
+    if (!S.bot) {
+      _tp.set(g.x, set.size.y * sy * 0.5, g.z).project(camera);
+      if (_tp.z < 1) {
+        let el = gateLabelPool[ln];
+        if (!el) { el = document.createElement('div'); el.className = 'gl'; tagLayer.appendChild(el); gateLabelPool[ln] = el; el._t = ''; }
+        const text = g.op === 'mul' ? '×' + g.v : (g.v > 0 ? '+' : '−') + Math.abs(g.v);
+        if (el._t !== text) { el._t = text; el.textContent = text; }
+        const cls = 'gl ' + kind + (g.flash > 0 ? ' up' : '');
+        if (el.className !== cls) el.className = cls;
+        const sc = Math.max(0.55, Math.min(1.3, 1.45 - (camera.position.z - g.z) / 60));
+        el.style.transform = `translate(${(_tp.x * 0.5 + 0.5) * window.innerWidth}px, ${(-_tp.y * 0.5 + 0.5) * window.innerHeight}px) translate(-50%, -50%) scale(${sc.toFixed(2)})`;
+        el.style.display = '';
+        ln++;
+      }
+    }
+  }
+  for (const a of Object.values(gateArches)) a.end();
+  gatePanels.count = n; gatePanels.instanceMatrix.needsUpdate = true; gatePanels.instanceColor.needsUpdate = true;
+  for (let k = ln; k < gateLabelPool.length; k++) if (gateLabelPool[k].style.display !== 'none') gateLabelPool[k].style.display = 'none';
 }
 
 // hit-stop: the game freezes for a few frames on the biggest hits (only in real play, never in tests)
@@ -556,7 +610,7 @@ const LEFT = 0, MID = 1, RIGHT = 2;
 const SPAWN_Z = -76;
 const SHOOT_LEN = rogueBaked.clips['2H_Ranged_Shooting'].duration; // one bolt per loop
 const RELEASE = 0.14; // point in the shooting loop where the bolt leaves the crossbow
-const CONVEYOR = 2.7; // speed of everything that is not walking by itself
+const CONVEYOR = 4.2; // speed of everything that is not walking by itself (rewards, gates, walls)
 // rewards you pick up by standing where they arrive (not by shooting them); prisons and walls must still be shot
 const COLLECT = new Set(['plus1', 'plus5', 'plus99', 'weapon', 'weapon2', 'rapid', 'bomb', 'mult']);
 let clock = 0; // global animation clock (never resets)
@@ -572,6 +626,7 @@ function clearEntities() {
   for (const it of S?.items || []) if (it.statue !== undefined && it.statue >= 0) statues.release(it.statue);
   for (const w of S?.walls || []) { w.v.g.visible = false; wallPool.push(w.v); }
   for (const h of S?.hazards || []) releaseHazard(h);
+  if (S?.gates) S.gates.length = 0;
   for (const r of S?.rocks || []) releaseRock(r);
   bolts.list.length = 0;
 }
@@ -583,13 +638,13 @@ function startLevel(n, troopCount) {
   visibleAlive = 0;
   const cfg = levelConfig(n);
   S = {
-    level: n, cfg, t: 0, phase: 'horde', gold: 0, home: S?.home || 0, cx: 0, targetCx: 0,
+    level: n, cfg, t: 0, lt: 0, phase: 'horde', gold: 0, home: S?.home || 0, cx: 0, targetCx: 0,
     count: troopCount, startCount: troopCount, settled: false, mods: { dmg: 1, rate: 1, hero: 1, power: 1, gold: 1, medic: 0 }, troop: [], enemies: [], boss: null, items: [], walls: [],
     heroList: [], fireballs: [], weapon: 0, rapid: 0, stats: { ev: {}, pop: {}, lane: [0, 0, 0] }, nextHorde: 0.4, kills: 0, lost: 0, shake: 0, endT: 0, bot: S?.bot || null,
     // each side lane plays its own shuffled deck of events, so the two sides never mirror each other
     // a scripted opening (popped from the end) guarantees an early weapon chest and +5s, then the decks are random
     // scripted opening (popped from the end, nearest first): soldiers on both sides and an early weapon chest, then random decks
-    side: [{ lane: LEFT, deck: ['squad', 'plus5', 'plus1', 'plus1'], next: 0 }, { lane: RIGHT, deck: ['plus5', 'plus1', 'weapon', 'plus1'], next: 0 }],
+    enc: { opening: cfg.encounters.opening.slice(), deck: [], next: 0 }, gates: [], timedRush: 0,
     hazards: [], rocks: [], troopFlash: -1, nextHazard: 15, spent: {}, orbs: [], rowAcc: 0, hordeSpeed: 3, rush: 0, nextElite: cfg.eliteEvery, timeline: cfg.timeline.map((ev) => ({ ...ev })), casterList: [],
   };
   const vis = Math.min(S.count, TROOP.visibleMax);
@@ -597,12 +652,10 @@ function startLevel(n, troopCount) {
   // opening: a horde already on its way, +1 blocks in both side lanes
   S.hordeSpeed = cfg.hordeSpeed[0];
   for (let z = cfg.hordeStartZ; z > SPAWN_Z; z -= cfg.rowGap) spawnRow(MID, z, hordeWidth(0, z));
-  for (const sd of S.side) {
-    let z = -15;
-    while (z > SPAWN_Z + 3) { const len = sideEvent(sd.lane, sd, z); z -= len + 1.2; }
-    sd.next = 0.4;
-  }
+  // the first choices are already on their way when the level starts
+  { let z = -24; for (let k = 0; k < 8 && z > SPAWN_Z + 8; k++) z -= encounter(z) + 7; S.enc.next = Math.max(0.3, (z - SPAWN_Z) / CONVEYOR); }
   levelLabel.textContent = 'BANE ' + n;
+  if (cfg.stars) { starEls[1].querySelector('b').textContent = fmt(cfg.stars[0]); starEls[2].querySelector('b').textContent = fmt(cfg.stars[1]); }
   overEl.classList.remove('on'); winEl.classList.remove('on');
   showBanner('BANE ' + n, 'blue');
   updateHud(true);
@@ -718,7 +771,7 @@ function sideEvent(lane, deckState, z0 = SPAWN_Z) {
     if (S.spent[ev] > cfg.budget[ev]) ev = ['squad', 'plus1', 'squad', 'rapid', 'bomb'][Math.floor(Math.random() * 5)];
   }
   S.stats.ev[ev] = (S.stats.ev[ev] || 0) + 1;
-  const prog = Math.min(1, S.t / cfg.duration);
+  const prog = Math.min(1, S.lt / cfg.duration);
   switch (ev) {
     case 'plus1': { const n = 6 + Math.floor(Math.random() * 6); for (let k = 0; k < n; k++) addItem('plus1', lane, z0 - k * 2.5, cfg.plus1Hp, { x: LANES[lane] + (k % 2 ? 0.9 : -0.9) }); return n * 2.5; }
     case 'plus5': { addItem('plus5', lane, z0, cfg.plus5Hp); addItem('plus5', lane, z0 - 3, cfg.plus5Hp); return 6; }
@@ -751,13 +804,113 @@ function sideEvent(lane, deckState, z0 = SPAWN_Z) {
   }
 }
 
+// ---------------------------------------------------------------- encounters: both side lanes at once, so every encounter is a choice
+const rint = (a, b) => Math.round(a + Math.random() * (b - a));
+function addGate(lane, z, op, v) {
+  const c = S.cfg.gate;
+  const g = { gate: true, lane, x: LANES[lane], z, op, v, acc: 0, step: c.step, hp: 1e9, max: 1e9, pending: 0, flash: 0, alive: true, passed: false };
+  S.gates.push(g);
+  return g;
+}
+function encounter(z0 = SPAWN_Z) {
+  const cfg = S.cfg;
+  let type = S.enc.opening.length ? S.enc.opening.shift() : null;
+  if (!type) { if (!S.enc.deck.length) S.enc.deck = shuffled(cfg.encounters.deck); type = S.enc.deck.pop(); }
+  S.stats.ev[type] = (S.stats.ev[type] || 0) + 1;
+  const flip = Math.random() < 0.5, A = flip ? LEFT : RIGHT, B = flip ? RIGHT : LEFT;
+  const G = cfg.gate;
+  switch (type) {
+    case 'gates': {
+      // a pair of number gates. Shooting one raises its number, so a bad gate can be turned good (if you have time)
+      const r = Math.random();
+      addGate(A, z0, 'add', rint(G.add[0], G.add[1]));
+      if (r < 0.35 && S.t > 6) addGate(B, z0, 'mul', 2);
+      else if (r < 0.7) addGate(B, z0, 'add', -rint(G.minus[0], G.minus[1]));
+      else addGate(B, z0, 'add', rint(G.add[0], G.add[1]) - rint(3, 8));
+      return 3;
+    }
+    case 'smallbig': {
+      // one side: many small crates, easy. Other side: guards, a wall and a BIG reward right behind it.
+      // Break the wall in time and the reward is yours; fail and the wall crushes whoever stands there and buries the reward.
+      const n = rint(cfg.smallCrates[0], cfg.smallCrates[1]);
+      for (let k = 0; k < n; k++) addItem('plus1', A, z0 - k * 1.5, 0, { x: LANES[A] + (Math.random() - 0.5) * (LANE_W - 2.2) });
+      let big = ['plus99', 'weapon2', 'prisoner'][Math.floor(Math.random() * 3)];
+      const budgetKey = { plus99: 'fort', weapon2: 'weapon2', prisoner: 'prisoner' };
+      const okBig = (b) => (S.spent[budgetKey[b]] || 0) < cfg.budget[budgetKey[b]] && !(b === 'weapon2' && S.weapon >= WEAPON.length - 2) &&
+        !(b === 'prisoner' && S.heroList.length + S.items.filter((i) => i.alive && i.kind === 'prisoner').length >= cfg.maxHeroes);
+      if (!okBig(big)) big = ['plus99', 'weapon2', 'prisoner'].find(okBig) || 'plus99';
+      S.spent[budgetKey[big]] = (S.spent[budgetKey[big]] || 0) + 1;
+      escort(B, z0, cfg.escort);
+      const w = addWall(B, z0 - 4, big === 'weapon2' ? cfg.bigWeaponWallHp : cfg.fortHp);
+      if (big === 'prisoner') {
+        const st = statues.alloc();
+        if (st >= 0) { statues.play(st, 'Idle', clock, 0.0001, Math.random()); addItem('prisoner', B, z0 - 6.8, cfg.prisonHp, { statue: st, chunksLeft: PRISON_CHUNKS, hero: pickHeroKind(), behind: w, lockedBy: w }); }
+      } else addItem(big, B, z0 - 6.6, 0, { behind: w });
+      // and the horde surges right when the wall arrives: the risk of going for it
+      S.timedRush = S.t + ((TROOP_Z - 6) - (z0 - 4)) / CONVEYOR - 4;
+      return Math.max(n * 1.5, 9);
+    }
+    case 'weapon': {
+      // a weapon chest behind a few guards, or a bunch of +8 on the other side
+      if (S.weapon + S.items.filter((i) => i.alive && i.kind === 'weapon').length >= WEAPON.length - 1) { addItem('plus5', A, z0, 0); }
+      else { spawnRow(A, z0 + 1, 4); addItem('weapon', A, z0 - 1.5, 0); }
+      for (let k = 0; k < 3; k++) addItem('plus5', B, z0 - k * 2, 0, { x: LANES[B] + (k - 1) * 2.2 });
+      return 6;
+    }
+    case 'power': { addItem('rapid', A, z0, 0); addItem('bomb', B, z0, 0); return 3; }
+    case 'squads': {
+      const n = Math.round(cfg.squadSize[0] + (cfg.squadSize[1] - cfg.squadSize[0]) * Math.min(1, S.lt / cfg.duration));
+      for (const L of [A, B]) { const rows = Math.ceil(n / 6); for (let r = 0; r < rows; r++) spawnRow(L, z0 - r * cfg.rowGap, Math.min(6, n - r * 6)); }
+      addItem('plus5', A, z0 - 7, 0); addItem('plus5', B, z0 - 7, 0);
+      return 9;
+    }
+    case 'hazard': {
+      for (let k = 0; k < 2; k++) addHazard('barrel', A, z0 - k * 5);
+      for (let k = 0; k < 6; k++) addItem('plus1', B, z0 - k * 1.5, 0, { x: LANES[B] + (Math.random() - 0.5) * (LANE_W - 2.2) });
+      return 10;
+    }
+    default: return 4;
+  }
+}
+
+// number gates ride in like the rewards; passing through one adds, subtracts or multiplies
+function updateGates(dt) {
+  for (const g of S.gates) {
+    if (!g.alive) continue;
+    g.z += CONVEYOR * (g.z > LANE_END_Z ? 1.6 : 1) * dt;
+    if (g.flash > 0) g.flash -= dt;
+    if (!g.passed && g.z > TROOP_Z - troopRadius() * 0.7 - 0.6) {
+      g.passed = true;
+      if (Math.abs(S.cx - g.x) < LANE_W / 2 + troopRadius() * 0.25 && (S.phase === 'horde' || S.phase === 'boss')) passGate(g);
+    }
+    if (g.z > TROOP_Z + 4) g.alive = false;
+  }
+  if (S.gates.some((g) => !g.alive)) S.gates = S.gates.filter((g) => g.alive);
+}
+function passGate(g) {
+  S.stats.pop['gate_' + g.op] = (S.stats.pop['gate_' + g.op] || 0) + 1;
+  if (g.op === 'mul') {
+    const n = Math.max(1, Math.min(S.count * (g.v - 1), S.cfg.gate.multCap));
+    gainTroops(n, true);
+    if (!S.bot) { sfx.mult(); buzz(80); freeze(0.08); flashScreen('rgba(255,210,90,0.95)', 0.45); troopRing([2.6, 2.0, 0.5], 80); }
+  } else if (g.v > 0) {
+    gainTroops(g.v, true);
+    if (!S.bot) { sfx.gain(Math.max(20, g.v)); troopRing([0.5, 1.2, 3.0], 60); flashScreen('rgba(120,190,255,0.9)', 0.25); }
+  } else if (g.v < 0) {
+    loseTroops(-g.v, S.cx, TROOP_Z);
+    if (!S.bot) { flashScreen('rgba(255,60,30,0.9)', 0.35); troopRing([3.0, 0.4, 0.3], 60); }
+  }
+  g.alive = false;
+}
+
 // formation slot (sunflower packing => round, dense clump that grows wider with size)
 function slot(k) {
-  const r = 0.42 * Math.sqrt(k + 0.6);
+  const r = TROOP_SPACING * Math.sqrt(k + 0.6);
   const a = k * 2.399963;
   return [Math.cos(a) * r, Math.sin(a) * r * 0.7];
 }
-function troopRadius() { return 0.42 * Math.sqrt(Math.max(1, visibleAlive) + 0.6); }
+const TROOP_SPACING = 0.37; // tighter clump: the troop covers less of a lane, so it cannot catch everything at once
+function troopRadius() { return TROOP_SPACING * Math.sqrt(Math.max(1, visibleAlive) + 0.6); }
 function fireSpeed() { return (S.rapid > 0 ? 1.9 : 1) * S.mods.rate; }
 
 function spawnVisibleSoldier(x, z, instant) {
@@ -829,7 +982,7 @@ function spawnRow(lane, z, width, fast = 1) {
 
 function spawnEnemy(z, opts = {}) {
   const cfg = S.cfg;
-  const prog = Math.min(1, S.t / cfg.duration);
+  const prog = Math.min(1, S.lt / cfg.duration);
   let type = opts.type;
   if (!type) {
     const r = Math.random();
@@ -920,7 +1073,13 @@ function updateHud(force) {
   weaponEl.style.setProperty('--wc', WEAPON[S.weapon].css);
   rapidEl.classList.toggle('on', S.rapid > 0);
   rapidEl.querySelector('b').textContent = Math.ceil(S.rapid) + ' s';
-  progFill.style.width = (Math.min(1, S.t / S.cfg.duration) * 100).toFixed(1) + '%';
+  progFill.style.width = (Math.min(1, S.lt / S.cfg.duration) * 100).toFixed(1) + '%';
+  if (S.endless) levelLabel.textContent = 'ENDELØS ' + fmtTime(S.t);
+  // star thresholds: ★★ and ★★★ light up while the troop is big enough
+  if (S.cfg.stars && !S.endless) {
+    starEls[1].classList.toggle('on', S.count >= S.cfg.stars[0]);
+    starEls[2].classList.toggle('on', S.count >= S.cfg.stars[1]);
+  }
   progEl.classList.toggle('boss', S.phase !== 'horde');
   document.body.classList.toggle('bossbar', !!(S.boss && S.boss.state !== 'dead'));
   if (S.boss && S.boss.state !== 'dead') { bossBar.classList.add('on'); bossFill.style.width = Math.max(0, S.boss.hp / S.boss.max * 100) + '%'; }
@@ -956,6 +1115,51 @@ const reserveCap = () => upVal('barracks');
 const fmt = (n) => Math.round(n).toLocaleString('da-DK');
 const starsHtml = (n) => [0, 1, 2].map((k) => `<span class="star${k < n ? ' on' : ''}">★</span>`).join('');
 
+/** The base's upgrades as they apply to a level that starts now. */
+function applyBase() {
+  S.weapon = upVal('smith');
+  S.mods = { dmg: 1 + upVal('sharp') / 100, rate: 1 + upVal('drill') / 100, hero: 1 + upVal('heroes') / 100, power: 1 + upVal('powder') / 100, gold: 1 + upVal('treasury') / 100, medic: upVal('medic') / 100 };
+  for (const s of S.troop) retime(s);
+  for (let k = 0; k < upVal('hall'); k++) freeHero(S.cx + (k - 0.5) * 3, TROOP_Z + 4, pickHeroKind());
+}
+/** ENDLESS: the whole reserve marches out and never comes back. Waves get harder every minute; a boss closes each one. */
+function beginEndless() {
+  const lvl = Math.max(1, save.maxLevel - 1);
+  const all = save.reserve;
+  save.reserve = 0; storeSave();
+  startLevel(lvl, startTroop(lvl) + upVal('training') + all);
+  applyBase();
+  S.endless = true; S.baseLevel = lvl; S.cycle = 0;
+  S.cfg.duration = 60;
+  levelLabel.textContent = 'ENDELØS';
+  mapEl.classList.remove('on'); baseEl.classList.remove('on'); document.body.classList.remove('inmenu');
+  showBaseWorld(false);
+  document.body.classList.add('endless');
+  if (all > 0) showBanner('Hele reserven: +' + all, 'blue');
+  sfx.warcry(true);
+  updateHud(true);
+}
+function nextEndlessCycle() {
+  S.cycle++;
+  const cfg = levelConfig(S.baseLevel + S.cycle * 2); // every wave jumps two levels of difficulty
+  cfg.duration = 60;
+  S.cfg = cfg; S.lt = 0;
+  S.timeline = cfg.timeline.map((ev) => ({ ...ev }));
+  S.spent = {};
+  if (!S.boss) spawnBoss();
+}
+/** sound that follows the battle: volley density from fire power, music by phase */
+function updateBattleSound() {
+  if (S.bot) return;
+  if (S.phase === 'menu') { setFireLevel(0); setMusic('base'); return; }
+  if (S.phase === 'won' || S.phase === 'lost') { setFireLevel(0); setMusic(''); return; }
+  const shooters = S.troop.reduce((n, s) => n + (s.state === 'shoot' ? 1 : 0), 0);
+  const weight = visibleAlive > 0 ? Math.max(1, S.count / visibleAlive) : 1;
+  const eff = shooters * fireSpeed() / SHOOT_LEN * Math.sqrt(weight) * (1 + S.weapon * 0.2);
+  setFireLevel(Math.max(0, Math.min(1, (Math.log10(Math.max(1, eff)) - 1) / 2.2)));
+  setMusic(S.boss && S.boss.state !== 'dead' ? 'boss' : 'battle');
+}
+
 /** Start a level from the campaign: the barracks send their soldiers along, the smith and the hero hall add their part. */
 function beginLevel(n) {
   const fromReserve = Math.min(save.reserve, reserveCap());
@@ -963,11 +1167,11 @@ function beginLevel(n) {
   storeSave();
   startLevel(n, startTroop(n) + upVal('training') + fromReserve);
   S.fromReserve = fromReserve;
-  S.weapon = upVal('smith');
-  S.mods = { dmg: 1 + upVal('sharp') / 100, rate: 1 + upVal('drill') / 100, hero: 1 + upVal('heroes') / 100, power: 1 + upVal('powder') / 100, gold: 1 + upVal('treasury') / 100, medic: upVal('medic') / 100 };
-  for (const s of S.troop) retime(s);
-  for (let k = 0; k < upVal('hall'); k++) freeHero(S.cx + (k - 0.5) * 3, TROOP_Z + 4, pickHeroKind());
+  applyBase();
+  document.body.classList.remove('endless');
+  sfx.warcry(false);
   mapEl.classList.remove('on'); baseEl.classList.remove('on'); document.body.classList.remove('inmenu');
+  showBaseWorld(false);
   if (fromReserve > 0) showBanner('+' + fromReserve + ' fra kasernen', 'blue');
   updateHud(true);
 }
@@ -986,13 +1190,20 @@ function settleLevel() {
     save.reserve = Math.min(reserveCap(), save.reserve + S.count);
     S.housed = save.reserve - before;
   }
+  if (S.endless) {
+    const best = save.endless || { t: 0, kills: 0 };
+    S.newRecord = S.t > best.t;
+    if (S.newRecord) save.endless = { t: Math.round(S.t), kills: S.kills };
+  }
   S.gold = Math.round(S.gold * S.mods.gold);
   save.gold += S.gold;
   storeSave();
 }
 
+const starEls = [...document.querySelectorAll('#starbar .s')];
 const mapEl = document.getElementById('map'), baseEl = document.getElementById('base'), mapPath = document.getElementById('mapPath');
 function openMap() {
+  showBaseWorld(false);
   document.body.classList.add('inmenu');
   overEl.classList.remove('on'); winEl.classList.remove('on'); baseEl.classList.remove('on');
   S.phase = 'menu';
@@ -1011,46 +1222,108 @@ function openMap() {
   });
   mapPath.innerHTML = `<div style="position:relative;height:${H}px">${html}</div>`;
   document.getElementById('playNext').textContent = 'Spil bane ' + save.maxLevel;
+  const eb = document.getElementById('playEndless');
+  eb.disabled = save.maxLevel < 3;
+  eb.innerHTML = save.maxLevel < 3 ? 'Endeløs 🔒' : 'Endeløs' + (save.endless ? `<small>rekord ${fmtTime(save.endless.t)}</small>` : '');
   mapEl.classList.add('on');
   // scroll so the current level is in view
   requestAnimationFrame(() => { mapPath.scrollTop = Math.max(0, pts[Math.min(LEVEL_COUNT, save.maxLevel) - 1][1] - mapPath.clientHeight * 0.6); });
 }
 mapPath.addEventListener('click', (e) => { const b = e.target.closest('.node'); if (b && !b.disabled) beginLevel(+b.dataset.n); });
 document.getElementById('playNext').addEventListener('click', () => beginLevel(save.maxLevel));
+document.getElementById('playEndless').addEventListener('click', () => { if (save.maxLevel >= 3) beginEndless(); });
 
-function openBase() {
+// ---------------------------------------------------------------- the base: a 3D village (src/base.js)
+let baseView = null, basePromise = null;
+function loadBase() {
+  if (!basePromise) basePromise = loader.loadAsync('assets/base.json').then((g) => {
+    baseView = new BaseView(g, rogueBaked, blueMat);
+    baseView.resize(window.innerWidth, window.innerHeight);
+    return baseView;
+  });
+  return basePromise;
+}
+const baseLabels = document.getElementById('baseLabels'), basePanel = document.getElementById('basePanel');
+const plotLabelEls = {};
+let squareEl = null;
+const plotLocked = (key) => save.maxLevel < PLOTS[key].unlock;
+function showBaseWorld(on) {
+  if (baseView) baseView.active = on;
+  renderPass.scene = on && baseView ? baseView.scene : scene;
+  renderPass.camera = on && baseView ? baseView.camera : camera;
+}
+async function openBase() {
   document.body.classList.add('inmenu');
   overEl.classList.remove('on'); winEl.classList.remove('on'); mapEl.classList.remove('on');
   S.phase = 'menu';
+  baseEl.classList.add('on');
+  if (!baseView) { basePanel.innerHTML = '<div class="bp-hint">Basen bygges…</div>'; await loadBase(); }
+  showBaseWorld(true);
+  refreshBase();
+}
+function refreshBase() {
+  if (!baseView) return;
   document.getElementById('baseGold').textContent = fmt(save.gold);
   document.getElementById('baseReserve').textContent = fmt(save.reserve) + ' / ' + fmt(reserveCap());
-  let html = '';
-  for (const g of BASE_GROUPS) {
-    html += `<div class="grp">${g}</div>`;
-    for (const [key, u] of Object.entries(BASE)) {
-      if (u.group !== g) continue;
-      const lv = save.up[key] || 0, max = lv >= u.max, cost = max ? 0 : u.cost(lv);
-      const pips = Array.from({ length: u.max }, (_, k) => `<i class="${k < lv ? 'on' : ''}"></i>`).join('');
-      html += `<div class="up"><div class="ico">${u.icon}</div><div class="nm">${u.name} <small>${lv}/${u.max}</small></div>
-        <button class="btn gold" data-up="${key}" ${max || save.gold < cost ? 'disabled' : ''}>${max ? 'MAX' : '<span class="coin"></span>' + fmt(cost)}</button>
-        <div class="what">${u.what}</div><div class="now">${u.text(u.value(lv))}${max ? '' : ' <b>→ ' + u.text(u.value(lv + 1)) + '</b>'}</div><div class="pips">${pips}</div></div>`;
-    }
+  for (const key of Object.keys(PLOTS)) {
+    const u = BASE[key], lv = save.up[key] || 0, locked = plotLocked(key);
+    baseView.setPlot(key, lv, u.max, locked);
+    let el = plotLabelEls[key];
+    if (!el) { el = document.createElement('div'); el.className = 'plabel'; baseLabels.appendChild(el); plotLabelEls[key] = el; el.addEventListener('click', () => selectPlot(key)); }
+    const can = !locked && lv < u.max && save.gold >= u.cost(lv);
+    el.className = 'plabel' + (locked ? ' locked' : lv === 0 ? ' site' : '') + (can ? ' can' : '') + (baseView.selected === key ? ' sel' : '');
+    el.innerHTML = locked ? `🔒 <small>Bane ${PLOTS[key].unlock}</small>` : lv === 0 ? `${u.icon} BYG <small>${u.name}</small>` : `${u.icon} ${u.name} <b>${lv}</b>${can ? '<i>▲</i>' : ''}`;
   }
-  const list = document.getElementById('baseList'), top = list.scrollTop;
-  list.innerHTML = html;
-  list.scrollTop = top;
-  baseEl.classList.add('on');
+  if (!squareEl) { squareEl = document.createElement('div'); squareEl.className = 'plabel square'; baseLabels.appendChild(squareEl); }
+  squareEl.innerHTML = `🛡️ Reserve <b>${fmt(save.reserve)}</b><small>plads til ${fmt(reserveCap())}</small>`;
+  baseView.setTroop(save.reserve, clock);
+  drawPanel();
 }
-document.getElementById('baseList').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-up]');
-  if (!b || b.disabled) return;
-  const key = b.dataset.up, u = BASE[key], lv = save.up[key] || 0;
-  if (lv >= u.max || save.gold < u.cost(lv)) return;
+function selectPlot(key) { if (!baseView) return; baseView.select(key); refreshBase(); }
+function drawPanel() {
+  const key = baseView?.selected;
+  if (!key) { basePanel.innerHTML = '<div class="bp-hint">Tryk på en bygning for at bygge eller opgradere den</div>'; return; }
+  const u = BASE[key], lv = save.up[key] || 0, locked = plotLocked(key), max = lv >= u.max, cost = max ? 0 : u.cost(lv);
+  const pips = Array.from({ length: u.max }, (_, k) => `<i class="${k < lv ? 'on' : ''}"></i>`).join('');
+  let action;
+  if (locked) action = `<button class="btn" disabled>Klar efter bane ${PLOTS[key].unlock - 1}</button>`;
+  else if (max) action = '<button class="btn gold" disabled>MAX</button>';
+  else action = `<button class="btn gold" id="bpBuy" ${save.gold < cost ? 'disabled' : ''}>${lv === 0 ? 'Byg' : 'Opgradér'} <span class="coin"></span>${fmt(cost)}</button>`;
+  basePanel.innerHTML = `<div class="bp-head"><span class="bp-ico">${u.icon}</span><div><div class="bp-name">${u.name} <small>${lv}/${u.max}</small></div><div class="bp-what">${u.what}</div></div></div>
+    <div class="bp-now">${u.text(u.value(lv))}${max ? '' : ' <b>→ ' + u.text(u.value(lv + 1)) + '</b>'}</div><div class="pips">${pips}</div>${action}`;
+  document.getElementById('bpBuy')?.addEventListener('click', () => buy(key));
+}
+function buy(key) {
+  const u = BASE[key], lv = save.up[key] || 0;
+  if (plotLocked(key) || lv >= u.max || save.gold < u.cost(lv)) return;
   save.gold -= u.cost(lv); save.up[key] = lv + 1; storeSave();
-  sfx.coin();
-  openBase();
-  const row = document.querySelector(`[data-up="${key}"]`)?.closest('.up');
-  if (row) { row.classList.add('bought'); setTimeout(() => row.classList.remove('bought'), 500); }
+  sfx.coin(); sfx.warcry(false); buzz(40);
+  baseView.cheer(clock);
+  refreshBase();
+}
+function updateBaseLabels() {
+  if (!baseView?.active) return;
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const [key, el] of Object.entries(plotLabelEls)) {
+    const [x, y, ok] = baseView.labelPos(key, w, h);
+    el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
+    el.style.display = ok ? '' : 'none';
+  }
+  if (squareEl) { const [x, y] = baseView.squarePos(w, h); squareEl.style.transform = `translate(${x}px, ${y}px) translate(-50%, 0)`; }
+}
+// tap a building to select it; drag up/down to look around the village
+let bDown = null;
+canvas.addEventListener('pointerdown', (e) => { if (baseView?.active) bDown = { x: e.clientX, y: e.clientY, pan: baseView.pan, moved: false }; });
+canvas.addEventListener('pointermove', (e) => {
+  if (!bDown || !baseView?.active) return;
+  const dy = e.clientY - bDown.y;
+  if (Math.abs(dy) > 8) bDown.moved = true;
+  baseView.pan = THREE.MathUtils.clamp(bDown.pan - dy * 0.06, -10, 8);
+});
+canvas.addEventListener('pointerup', (e) => {
+  if (!bDown || !baseView?.active) { bDown = null; return; }
+  if (!bDown.moved) { const k = baseView.pick(e.clientX, e.clientY, window.innerWidth, window.innerHeight); if (k) { selectPlot(k); sfx.click(); } }
+  bDown = null;
 });
 document.getElementById('openBase').addEventListener('click', openBase);
 document.getElementById('baseBack').addEventListener('click', openMap);
@@ -1070,6 +1343,7 @@ function buildTargets() {
   for (const it of S.items) if (it.alive && !COLLECT.has(it.kind) && !(it.lockedBy && it.lockedBy.alive)) laneTargets[it.lane].push(it);
   for (const h of S.hazards) if (h.alive) laneTargets[laneOf(h.x)].push(h);
   for (const w of S.walls) if (w.alive) laneTargets[w.lane].push(w);
+  for (const g of S.gates) if (g.alive && g.op === 'add' && g.v < S.cfg.gate.max) laneTargets[g.lane].push(g);
   if (S.boss && S.boss.state !== 'dead') laneTargets[laneOf(S.boss.x)].push(S.boss);
   for (const c of S.casterList) if (c.state !== 'dead') laneTargets[c.lane].push(c);
   for (const L of laneTargets) L.sort((a, b) => b.z - a.z);
@@ -1089,6 +1363,7 @@ function pickTarget(lane, fromZ) {
 }
 
 function hitHeight(t) {
+  if (t.gate) return 1.8;
   if (t.wall) return 1.6;
   if (t === S.boss) return 2.6;
   if (t.caster) return 1.6;
@@ -1115,7 +1390,7 @@ function shoot(s, dmg) {
   }
   t.pending += dmg;
   if (!S.bot) sfx.shoot(panOf(s.x));
-  _to.set(t.x + (Math.random() - 0.5) * (t.wall ? 2.4 : t.kind ? 2.6 : t === S.boss ? 0.8 : 0.3), hitHeight(t), t.z + 0.2);
+  _to.set(t.x + (Math.random() - 0.5) * (t.wall || t.gate ? 3.0 : t.kind ? 2.6 : t === S.boss ? 0.8 : 0.3), hitHeight(t), t.z + 0.2);
   const hx = _to.x, hy = _to.y, hz = _to.z;
   bolts.fire(_from, _to, 80, () => { t.pending -= dmg; damage(t, dmg, hx, hy, hz); });
   return true;
@@ -1124,6 +1399,16 @@ function shoot(s, dmg) {
 function damage(t, dmg, hx, hy, hz) {
   if (S.phase === 'lost') return;
   const w = WEAPON[S.weapon];
+  if (t.gate) {
+    // every gateStep of damage raises the gate's number by one
+    if (!t.alive || t.passed) return;
+    t.acc += dmg;
+    let up = 0;
+    while (t.acc >= t.step && t.v < S.cfg.gate.max) { t.acc -= t.step; t.v++; up++; }
+    if (up) { t.flash = 0.12; if (!S.bot) { glow.emit(t.x, 2.2, t.z + 0.3, 0, 2, 0, 0.6, 1.4, 3.0, 0.8, 0.25); sfx.tick(t.v); } }
+    sparks(hx, hy, hz + 0.3, 0.6, 0.8, 1.0, 1);
+    return;
+  }
   if (t.wall) {
     if (!t.alive) return;
     t.hp -= dmg; t.flash = 0.08;
@@ -1317,6 +1602,7 @@ function detonate() {
 
 function breakWall(w) {
   w.alive = false;
+  w.broken = true;
   w.v.g.visible = false;
   wallPool.push(w.v);
   S.shake = Math.max(S.shake, 0.6);
@@ -1336,6 +1622,7 @@ function killBoss() {
   for (let k = 0; k < 90; k++) glow.emit(b.x + (Math.random() - 0.5) * 2, 1 + Math.random() * 3, b.z, (Math.random() - 0.5) * 14, 2 + Math.random() * 10, (Math.random() - 0.5) * 10, 2.6, 0.6, 0.2, 0.45, 0.9, 10);
   for (let k = 0; k < 30; k++) puff(b.x, 0.5, b.z, 1, [0.7, 0.66, 0.6], 2.2);
   for (const e of S.enemies) if (e.state === 'run') killEnemy(e, true); // the horde collapses with its king
+  if (S.endless) { S.gold += S.cfg.gold.clear; S.endlessBosses = (S.endlessBosses || 0) + 1; return; }
   S.phase = 'won'; S.endT = 0;
   S.gold += S.cfg.gold.clear;
 }
@@ -1543,8 +1830,10 @@ function botTarget(style) {
   for (const e of S.enemies) if (e.state === 'run' && laneOf(e.x) === MID) front = Math.min(front, TROOP_Z - e.z);
   const catchV = [0, 0, 0];
   for (const it of S.items) if (it.alive && COLLECT.has(it.kind) && it.z > TROOP_Z - 9 && it.z < TROOP_Z) catchV[it.lane] += style === 'noweapon' && /weapon/.test(it.kind) ? 0 : VALUE[it.kind];
+  for (const g of S.gates) if (g.alive && !g.passed && g.z > TROOP_Z - 9) catchV[g.lane] += g.op === 'mul' ? Math.min(S.count, S.cfg.gate.multCap) * 2 : g.v * 3;
   for (const L of [LEFT, RIGHT]) if (avoid[L]) catchV[L] = 0;
   const bestCatch = catchV.indexOf(Math.max(...catchV));
+  for (const g of S.gates) if (g.alive && !g.passed && g.z > TROOP_Z - 7 && (g.op === 'add' && g.v < 0)) avoid[g.lane] = true;
   if (catchV[bestCatch] > 0 && front > (style === 'weak' ? 14 : 11)) return LANES[bestCatch] + (Math.random() - 0.5) * 0.5;
   // 'weak' = a cautious player who mostly defends and only grabs what is cheap
   if (threat[worst] > dps * (style === 'weak' ? 0.4 : 1.1)) return LANES[worst];
@@ -1565,9 +1854,9 @@ function update(dt) {
     let near = 0; for (const e of S.enemies) if (e.state === 'run' && e.z > -45) near++;
     setHordeLevel(S.phase === 'menu' || S.phase === 'won' || S.phase === 'lost' ? 0 : Math.min(1, 0.25 + near / 250));
   }
-  if (S.phase === 'menu') { glow.update(dt); dust.update(dt); updateFires(dt); return; } // map/base on top: the battlefield waits
+  if (S.phase === 'menu') { updateBattleSound(); glow.update(dt); dust.update(dt); updateFires(dt); return; } // map/base on top: the battlefield waits
   const playing = S.phase === 'horde' || S.phase === 'boss';
-  if (playing) S.t += dt;
+  if (playing) { S.t += dt; S.lt += dt; }
   blobN = 0;
   const cfg = S.cfg;
 
@@ -1589,7 +1878,7 @@ function update(dt) {
 
   // ---- spawns
   if (S.phase === 'horde') {
-    const p = Math.min(1, S.t / cfg.duration);
+    const p = Math.min(1, S.lt / cfg.duration);
     S.hordeSpeed = cfg.hordeSpeed[0] + (cfg.hordeSpeed[1] - cfg.hordeSpeed[0]) * p;
     // scripted events of the level: rushes and enemy heroes
     for (const ev of S.timeline) {
@@ -1597,7 +1886,7 @@ function update(dt) {
       ev.done = true;
       if (ev.type === 'rush') { S.rush = cfg.rush.time; sfx.warn(); }
       if (ev.type === 'caster') spawnCaster(ev.lane ?? (Math.random() < 0.5 ? LEFT : RIGHT));
-      if (ev.type === 'mult') addItem('mult', MID, SPAWN_Z, cfg.mult.hp);
+      if (ev.type === 'mult') addGate(MID, SPAWN_Z, 'mul', 2); // a ×2 gate inside the horde
     }
     // a new row enters every time the mass has advanced one row gap: the lane never empties behind it
     S.rowAcc += S.hordeSpeed * dt;
@@ -1610,16 +1899,19 @@ function update(dt) {
     // Guldkriger: one marches in the mass every few seconds
     S.nextElite -= dt;
     if (S.nextElite <= 0 && S.t > 8) { S.nextElite = cfg.eliteEvery * (0.7 + Math.random() * 0.6); spawnEnemy(SPAWN_Z, { type: 'elite' }); }
-    if (S.t >= cfg.duration) { S.phase = 'boss'; spawnBoss(); }
+    if (S.lt >= cfg.duration) {
+      if (S.endless) nextEndlessCycle(); // endless: the next, harder wave starts while the boss comes in
+      else { S.phase = 'boss'; spawnBoss(); }
+    }
   } else if (S.phase === 'boss') {
     S.rowAcc += S.hordeSpeed * dt;
     while (S.rowAcc >= cfg.rowGap) { S.rowAcc -= cfg.rowGap; spawnRow(MID, SPAWN_Z - S.rowAcc, cfg.bossEscortWidth); }
   }
   if (playing) {
-    for (const sd of S.side) {
-      sd.next -= dt;
-      if (sd.next <= 0) { const len = sideEvent(sd.lane, sd); sd.next = len / CONVEYOR + EVENTS.gap[0] + Math.random() * (EVENTS.gap[1] - EVENTS.gap[0]); }
-    }
+    S.enc.next -= dt;
+    if (S.enc.next <= 0 && S.phase === 'horde') { const len = encounter(); const g = cfg.encounters.gap; S.enc.next = len / CONVEYOR + g[0] + Math.random() * (g[1] - g[0]); }
+    if (S.timedRush && S.t >= S.timedRush) { S.timedRush = 0; S.rush = cfg.rush.time; if (!S.bot) sfx.warn(); } // the near-fail: the horde surges while you are away
+    updateGates(dt);
   }
 
   // ---- keep the drawn troop in step with the real number (new soldiers run in from the side)
@@ -1753,7 +2045,9 @@ function update(dt) {
   updateBearer(dt);
   updateFires(dt);
   if (!S.bot) updateTags();
+  drawGates();
   updateDelta(dt);
+  updateBattleSound();
   if (S.troopFlash > -0.1) S.troopFlash -= dt;
 
   // ---- pickups and walls ride the conveyor; walls hold back whatever is behind them in their lane
@@ -1786,7 +2080,9 @@ function showEnd() {
     document.getElementById('winKills').textContent = S.kills.toLocaleString('da-DK');
     winEl.classList.add('on');
   } else {
-    document.getElementById('overProgress').textContent = Math.round(Math.min(1, S.t / S.cfg.duration) * 100) + ' %';
+    document.querySelector('#over h2').textContent = S.endless ? (S.newRecord ? 'Ny rekord!' : 'Den sidste kamp') : 'Truppen er faldet';
+    document.getElementById('overProgressLabel').textContent = S.endless ? 'Bosser besejret' : 'Nået';
+    document.getElementById('overProgress').textContent = S.endless ? String(S.endlessBosses || 0) : Math.round(Math.min(1, S.lt / S.cfg.duration) * 100) + ' %';
     document.getElementById('overGold').textContent = '+' + fmt(S.gold);
     document.getElementById('overKills').textContent = S.kills.toLocaleString('da-DK');
     document.getElementById('overTime').textContent = fmtTime(S.t);
@@ -1826,11 +2122,18 @@ function updateConveyor(dt) {
     // never pass through a standing wall in the same lane
     let limit = Infinity;
     for (const w of S.walls) if (w.lane === it.lane && w.z > it.z) limit = Math.min(limit, w.z - 1.6);
+    if (it.behind && !it.behind.alive && !it.behind.broken) {
+      // the wall was not broken in time: the reward behind it is buried under the rubble
+      it.alive = false; it.pop = 1;
+      if (it.statue >= 0 && it.statue !== undefined) { statues.release(it.statue); it.statue = -1; }
+      for (let k = 0; k < 12; k++) puff(it.x + (Math.random() - 0.5) * 2, 0.4, it.z, 1, [0.6, 0.58, 0.55], 1.6);
+      continue;
+    }
     it.z = Math.min(limit, it.z + CONVEYOR * (COLLECT.has(it.kind) && it.z > LANE_END_Z ? 1.6 : 1) * dt);
     if (COLLECT.has(it.kind)) {
       // picked up when it reaches the front of the troop while the troop stands in its path
-      const reach = it.kind === 'mult' ? 2.6 : 1.2;
-      if (it.z > TROOP_Z - troopRadius() * 0.7 - 0.6 && it.z < TROOP_Z + 1 && Math.abs(it.x - S.cx) < troopRadius() + reach && (S.phase === 'horde' || S.phase === 'boss')) { popItem(it); it.pop = 1; continue; }
+      const reach = it.kind === 'mult' ? 2.6 : 0.5;
+      if (it.z > TROOP_Z - troopRadius() * 0.7 - 0.6 && it.z < TROOP_Z + 1 && Math.abs(it.x - S.cx) < troopRadius() * 0.8 + reach && (S.phase === 'horde' || S.phase === 'boss')) { popItem(it); it.pop = 1; continue; }
       if (it.z > TROOP_Z + 3) { it.alive = false; it.pop = 1; continue; } // missed: it rolls on past the troop
     } else if (it.z > exitZ) { it.alive = false; it.pop = 1; if (it.statue >= 0 && it.statue !== undefined) { statues.release(it.statue); it.statue = -1; } puff(it.x, 0.4, it.z, 5, [0.6, 0.7, 0.9]); continue; }
     if (it.flash > 0) it.flash -= dt;
@@ -1886,8 +2189,8 @@ function updateCamera(dt) {
   camera.lookAt(camTarget.x + S.cx * 0.45, camTarget.y, camTarget.z);
   if (params.has('cam')) { const c = params.get('cam').split(',').map(Number); camera.position.set(c[0], c[1], c[2]); camera.lookAt(c[3], c[4], c[5]); }
   camera.updateMatrixWorld();
-  troopLabelPos.set(S.cx, 3.9, TROOP_Z - troopRadius() * 0.72 - 1.0).project(camera);
-  troopEl.style.setProperty('--tp', `translate(${(troopLabelPos.x * 0.5 + 0.5) * window.innerWidth}px, ${(-troopLabelPos.y * 0.5 + 0.5) * window.innerHeight}px) translate(-50%, -100%)`);
+  troopLabelPos.set(S.cx, 1.3, TROOP_Z + 0.2).project(camera); // the number sits in the middle of the troop
+  troopEl.style.setProperty('--tp', `translate(${(troopLabelPos.x * 0.5 + 0.5) * window.innerWidth}px, ${(-troopLabelPos.y * 0.5 + 0.5) * window.innerHeight}px) translate(-50%, -50%)`);
 }
 
 resize();
@@ -1898,11 +2201,19 @@ if (params.has('boss')) { S.t = S.cfg.duration - 0.05; for (const ev of S.timeli
 if (params.has('mult')) addItem('mult', MID, -24, S.cfg.mult.hp);
 if (params.has('heroes')) for (const k of Object.keys(HERO)) freeHero(S.cx, TROOP_Z + 3, k);
 if (params.get('menu') === 'map') { update(0); openMap(); }
-if (params.get('menu') === 'base') { if (params.has('gold')) save.gold = +params.get('gold'); update(0); openBase(); }
+if (params.get('menu') === 'base') {
+  if (params.has('gold')) save.gold = +params.get('gold');
+  if (params.has('lvl')) save.maxLevel = +params.get('lvl');
+  if (params.has('reserve')) save.reserve = +params.get('reserve');
+  if (params.has('up')) for (const kv of params.get('up').split(',')) { const [k, v] = kv.split(':'); save.up[k] = +v; }
+  update(0);
+  openBase().then(() => { if (params.has('sel')) selectPlot(params.get('sel')); for (let k = 0; k < 30; k++) baseView.update(1 / 30, clock); updateBaseLabels(); composer.render(); });
+}
 if (params.has('bot')) S.bot = params.get('bot'); // screenshots of a bot-played game
 if (params.has('hz')) { addHazard(params.get('hz'), MID, -26); addHazard('barrel', LEFT, -34); }
-if (params.has('spawn')) { S.side[1].deck.push(params.get('spawn')); S.side[1].next = 0; } // force a side-lane event (tests)
+if (params.has('spawn')) { S.enc.opening.unshift(params.get('spawn')); S.enc.next = 0; } // force an encounter (tests)
 loadEl.classList.add('gone');
+if (!SNAP || params.get('menu') === 'base') setTimeout(() => loadBase(), SNAP ? 0 : 1500);
 
 // adaptive quality: keep the picture sharp, only drop resolution when the phone really struggles
 let fpsAcc = 0, fpsN = 0, fpsT = 0;
@@ -1923,6 +2234,7 @@ function frame(now) {
   last = now;
   if (hitStop > 0) { hitStop -= dt; dt *= 0.08; }
   update(dt);
+  if (baseView?.active) { baseView.update(dt, clock); updateBaseLabels(); }
   updateCamera(dt);
   floaters.update(dt, window.innerWidth, window.innerHeight);
   composer.render();
@@ -1934,8 +2246,10 @@ if (!SNAP) requestAnimationFrame(frame);
 
 // test hooks: screenshots and balance simulation
 window.__game = {
+  endless: () => { save.maxLevel = Math.max(save.maxLevel, 4); beginEndless(); S.bot = 'smart'; },
+  dbg: () => ({ size: gateArches.plus.size, center: gateArches.plus.center, min: gateArches.plus.min, gates: S.gates.map((g) => [g.lane, g.x, g.op, g.v, Math.round(g.z)]) }),
   get S() { return S; },
-  step: (n) => { for (let i = 0; i < n; i++) { update(1 / 30); floaters.update(1 / 30, window.innerWidth, window.innerHeight); } updateCamera(1 / 30); composer.render(); return { count: S.count, visible: visibleAlive, phase: S.phase, weapon: S.weapon, enemies: S.enemies.length }; },
+  step: (n) => { for (let i = 0; i < n; i++) { updateCamera(1 / 30); update(1 / 30); floaters.update(1 / 30, window.innerWidth, window.innerHeight); } updateCamera(1 / 30); composer.render(); return { count: S.count, visible: visibleAlive, phase: S.phase, weapon: S.weapon, enemies: S.enemies.length }; },
   // run a whole level with a bot at 30 steps/s without rendering; returns the outcome
   sim: (bot, level = 1, troop = TROOP.start, maxSeconds = 400) => {
     S.bot = bot;

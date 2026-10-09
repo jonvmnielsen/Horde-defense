@@ -3,23 +3,27 @@
 _Senest opdateret: 2026-10-08_
 
 ## Nu
-Runde 10 (9. okt): belønninger samles op, nedtælling på alt man skyder på, tættere horde med større specialfjender, nye lyde.
+Runde 11 (9. okt): talporte, få store mod mange små belønninger, kortere baner, stjernegrænse, musik og nye dybe lyde, endeløs tilstand, 3D-base.
 
-- **Belønninger samles op:** kasser (+2, +8, +60), våbenkister, 2× skud, bomber og ×2-porten kommer imod truppen og fanges, hvis truppen står hvor de ankommer. Man skyder ikke længere på dem.
-- **Skal stadig skydes:** fanger (helte) og mure. En mur der når truppen i dens spor knuser 18+ soldater; muren foran +60 har nu 900 liv (før 2200).
-- **Nedtælling:** tal + bjælke over mure, fanger, kampesten, skeletmagikere, guldkrigere og bossen. Rødt og pulserende under 30 %. Mure kaster stenflis når de rammes.
-- **Horden:** rækkerne står skulder ved skulder (rækkeafstand 0,8, ikke 1,0), massen slingrer lidt i sporet. Krigere 1,35×, Kæmper 1,95×, Guldkrigere 2,5×, magikere 2,2×, boss 3,8× størrelse. Basisskelettet 0,92×.
-- **Ingen tekst om fjender:** STORMLØB, SKELETMAGIKER, BOSS og ×2 PORT vises ikke længere; lyd (krigstrommer, brøl) og forandringen i massen fortæller det.
-- **Lyde:** 43 nye lyde renderet fra fysiske opskrifter (armbrøststreng, knogler der rammes og falder sammen, rustning, råb, eksplosioner, sten, krigshorn, trommer, boss-brøl) + en løkke med hordens fødder og stønnen, der bliver højere jo tættere horden er. Lyden placeres venstre/højre efter hvor det sker. `tools/make-sounds.py`.
-- **Start:** 16 soldater (før 12); horden starter lidt langsommere (2,9).
-- **Rettet fejl:** ×2-porten gav ingen soldater i runde 8-9.
-- **Bot-test:** bane 1 vinder 8/8 (aktiv og forsigtig), kun-midten taber. Bane 2 (34 soldater) 3/4. Bane 3 uden base-opgraderinger 1/3.
+- **Sidesporene kommer i par ("møder"):** begge sider ankommer samtidig, så man vælger én (eller bliver i midten).
+  - Talporte: fx +9 mod −10 eller +8 mod ×2. Skyd på en port for at hæve tallet (−10 kan blive +5). ×2-porte også midt i horden.
+  - Små mod store: den ene side mange +2-kasser spredt over sporet; den anden side vagter, en mur (nedtælling) og en stor belønning lige bag (+60, VÅBEN ++ eller en helt). Brydes muren ikke i tide, knuser den truppen i sporet og begraver belønningen. Lige når muren ankommer, kommer et stormløb i midten (planlagt næsten-tab).
+  - Øvrige: våbenkiste bag vagter mod +8-kasser, 2× skud mod bombe, skeletgrupper i begge sider, krudttønder mod +2-kasser.
+- **Bredere spor (8,4), tættere trup,** og man skal stå mere præcist for at fange kasser. Antallet står midt i truppen.
+- **Kortere baner:** 45 s på bane 1, +8 s pr. bane (højst 110). Bane 1 har én skeletmagiker og ét stormløb.
+- **Stjernegrænse** under fremskridtsbjælken: ★★ og ★★★ lyser, når truppen er stor nok.
+- **Lyd:** alt lavet om til dybt og blødt: dybe eksplosioner med lang rumlen, krigsråb fra en hel hær (op til 55 stemmer), armbrøst-salver som tre lydløkker der bliver tættere og tungere jo mere truppen skyder, stønnende soldater, krigstrommer. Ingen klokker.
+- **Musik:** kamp, boss og base (trommer, dybe strygere, horn, kor). `tools/make-music.py`.
+- **Endeløs:** fra kortet efter bane 2. Hele reserven går med og kommer aldrig hjem; hvert minut kommer en boss og sværhedsgraden hopper to baner. Rekord gemmes.
+- **3D-base:** en landsby med en bygning pr. opgradering. Byggepladser (stillads) for det der kan bygges, låste grunde (ruin + hegn) for senere baner, bygninger der vokser, får udbygninger og flag (guldflag på max). Reserven står samlet på torvet og jubler ved køb. Tryk på en bygning for at bygge/opgradere; træk op/ned for at se rundt.
+- **Bot-test:** bane 1 vinder 4/6, kun-midten taber efter 19 s. Bane 4 uden base 1/3 (basen skal bruges).
 
 ## Udgivelse
 - Live på https://jonvmnielsen.github.io/Horde-defense/ (GitHub Pages, udgives automatisk ved push til `main`).
 
 ## Næste
-1. Jon tester opsamling, nedtælling og lyde.
+1. Jon tester talporte, valgene, lyd/musik og basen.
+2. Ny fanebærer og heltinder i bure, når pakkerne er hentet (se docs/ASSETS.md).
 2. Jon henter de pakker i `docs/ASSETS.md`, der skal med.
 2. Tema: soldater mod zombier, når Jon har lagt Quaternius-pakkerne (Toon Shooter, Zombies, Animated Women) i repoet.
 3. Kvindelige helte (snigskytte, læge, sprængstofekspert) i bure, når Jon har svaret på forslaget.

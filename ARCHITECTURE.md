@@ -8,6 +8,8 @@ src/world.js          statisk miljø: spor, gårdsplads, kirkegård, ruiner, sko
 src/fx.js             partikler, armbrøstbolte, flydende tal
 src/audio.js          afspiller lydene (WebAudio): varianter, tonehøjde, stereo, loft over samtidige; hordens lydløkke
 tools/make-sounds.py  renderer alle lyde til public/sounds/*.mp3 (numpy + ffmpeg)
+src/base.js           3D-basen: landsby, bygninger pr. opgradering (PLOTS), reserven på torvet
+tools/make-music.py   renderer musikløkker (kamp, boss, base)
 src/props.js          PropSet: instanced kopier af en statisk model (kister, kasser, porte)
 src/levels.js         al balance: banelængde, fjendetal, liv, mur, boss, guld
 tools/sim.py          spiller hele baner headless med bots og printer resultatet
@@ -59,3 +61,12 @@ Ved indlæsning afspilles hver valgt animation på CPU'en, og hver vertex' posit
 - Mure (`S.walls`) ruller helt ind til truppen; `wallKills` soldater mistes hvis truppen står i sporet.
 - `tag()`/`updateTags()`: HTML-nedtælling over mure, fanger, kampesten, magikere, guldkrigere, boss (`#tags`).
 - `spawnRow()` pakker rækken tæt (0,62 pr. fjende) og lader massen slingre i midtersporet.
+
+## Runde 11: møder, porte, base
+- `encounter()` lægger et par hændelser i begge sidespor på samme z. `S.enc` styrer rækkefølge (`opening`, `deck`).
+- Talporte: `S.gates` (`addGate`, `updateGates`, `passGate`, `drawGates`). Skud hæver `v` med 1 pr. `gate.step` skade.
+- `it.behind`: belønning bag en mur; forsvinder hvis muren ikke er brudt (`w.broken`).
+- `S.timedRush`: stormløb timet til at ramme når en stor belønning ankommer.
+- `S.lt`: tid i banen/bølgen (nulstilles i endeløs, `nextEndlessCycle`).
+- Lyd: `setFireLevel` (tre salve-løkker), `setMusic`, `setHordeLevel` i audio.js; `updateBattleSound()` i main.js.
+- Basen: `base.glb` hentes i baggrunden (`loadBase`); `renderPass.scene/camera` skiftes til `baseView` når basen er åben.

@@ -56,3 +56,13 @@
 | 2026-10-09 | Ingen bannertekst om fjender | Jon: forandringen i massen skal fortælle hvad der sker. |
 | 2026-10-09 | Lyde renderes fra fysiske opskrifter (numpy) i stedet for live-synth | Jon: de første lyde var klik. Optagede lyde kræver pakker der ikke kan hentes herfra; renderede lyde har ingen licens at tjekke. |
 | 2026-10-09 | Opsamlede kasser giver +2 / +8 / +60 | Man skal være der for at få dem, så de må være mere værd. |
+| 2026-10-09 | Sidesporene kommer i par, der ankommer samtidig | Jon: man kunne samle det hele; nu er der et rigtigt valg. |
+| 2026-10-09 | Talporte der kan skydes op | Reklamens kerne; giver mening at skyde i sidesporet. |
+| 2026-10-09 | Store belønninger bag mure begraves hvis muren ikke brydes | Jon: risikoen for at det går galt og man har spildt en masse skal være der. |
+| 2026-10-09 | Stormløb når en stor belønning ankommer | Planlagt næsten-tab. |
+| 2026-10-09 | Bredere spor og tættere trup | Jon: for kort afstand mellem banerne. |
+| 2026-10-09 | Baner på 45 s + 8 s pr. bane | Analysen: korte runder i starten. |
+| 2026-10-09 | Lyd: dybt, blødt, lavpasfiltreret; salver som lydløkker der følger ildkraften | Jon: lydene var klingende og skingre; intensiteten skal kunne høres. |
+| 2026-10-09 | Endeløs tilstand bruger hele reserven | Designdokumentet: endeløs med dødsdømt trup trænet i basen. |
+| 2026-10-09 | Basen som 3D-landsby (Medieval Hexagon) | Jon: basen skal være visuel med bygninger der ændrer sig. |
+| 2026-10-09 | Ny fanebærer og heltinder venter på pakker | Kræver figurer vi ikke har lov til at hente herfra. |

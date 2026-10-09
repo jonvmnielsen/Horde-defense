@@ -93,15 +93,17 @@ const envList = [
     .map((n) => [n, findFile(HX, `${n}.gltf`)]),
 ];
 
-const env = (await io.read(envList[0][1]));
+/** Merge many small models into one file; each model becomes a top-level node named after it. */
+async function mergePack(list, outName) {
+const env = (await io.read(list[0][1]));
 {
   const r = env.getRoot(); const s = r.getDefaultScene() || r.listScenes()[0];
-  const wrap = env.createNode(envList[0][0]);
+  const wrap = env.createNode(list[0][0]);
   for (const ch of s.listChildren()) { s.removeChild(ch); wrap.addChild(ch); }
   s.addChild(wrap);
 }
 const mainScene = env.getRoot().listScenes()[0];
-for (const [name, file] of envList.slice(1)) {
+for (const [name, file] of list.slice(1)) {
   if (!file || !fs.existsSync(file)) { console.warn('missing', name, file); continue; }
   const d = await io.read(file);
   const s = d.getRoot().getDefaultScene() || d.getRoot().listScenes()[0];
@@ -115,6 +117,22 @@ for (const [name, file] of envList.slice(1)) {
   newScene.dispose();
 }
 await env.transform(unpartition(), dedup(), prune());
-await io.write(path.join(OUT, 'env.glb'), env);
-console.log('env.glb', (fs.statSync(path.join(OUT, 'env.glb')).size / 1024).toFixed(0), 'KB',
+await io.write(path.join(OUT, outName), env);
+console.log(outName, (fs.statSync(path.join(OUT, outName)).size / 1024).toFixed(0), 'KB',
   'textures', env.getRoot().listTextures().length, 'nodes', mainScene.listChildren().length);
+}
+await mergePack(envList, 'env.glb');
+
+// the base between levels: buildings that grow with their upgrades, construction sites, hex ground, props
+const PB = `${SRC}/KayKit-Prototype-Bits-1.0`;
+const baseList = [
+  ...['building_archeryrange_blue', 'building_barracks_blue', 'building_blacksmith_blue', 'building_castle_blue', 'building_church_blue',
+    'building_home_A_blue', 'building_home_B_blue', 'building_market_blue', 'building_mine_blue', 'building_scaffolding', 'building_tavern_blue',
+    'building_tower_A_blue', 'building_tower_B_blue', 'building_tower_catapult_blue', 'building_well_blue', 'building_windmill_blue',
+    'building_lumbermill_blue', 'building_destroyed',
+    'hex_grass', 'barrel', 'crate_A_big', 'crate_B_small', 'crate_open', 'fence_wood_straight', 'fence_stone_straight', 'flag_blue', 'flag_yellow',
+    'flag_red', 'resource_lumber', 'resource_stone', 'sack', 'tent', 'wheelbarrow', 'trees_A_large', 'trees_B_medium', 'tree_single_A',
+    'hills_A_trees', 'mountain_A_grass_trees', 'mountain_B_grass_trees']
+    .map((n) => [n, findFile(HX, `${n}.gltf`)]),
+];
+await mergePack(baseList, 'base.glb');
