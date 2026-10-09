@@ -7,7 +7,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { PropSet } from './props.js';
-import { sfx, buzz, unlockAudio, isMuted, setMuted } from './audio.js';
+import { sfx, buzz, unlockAudio, isMuted, setMuted, preloadAudio, setHordeLevel, panOf } from './audio.js';
+preloadAudio();
 import { bakeCharacter, createVatMaterial, Crowd, setVatTime } from './vat.js';
 import { buildWorld, makeSky, LANES, LANE_W, LANE_END_Z, EDGE } from './world.js';
 import { Particles, Bolts, Floaters, RADIAL } from './fx.js';
@@ -234,6 +235,48 @@ function flashScreen(css, a = 0.5) {
   flashEl.style.opacity = 0;
 }
 
+// ---------------------------------------------------------------- countdowns: everything you have to shoot shows what is left
+// HTML tags (crisp text at any resolution) placed over walls, prisons, boulders, enemy mages, golden warriors and the boss
+const tagLayer = document.getElementById('tags');
+const tagPool = [];
+let tagN = 0;
+const _tp = new THREE.Vector3();
+function tag(x, y, z, hp, max, cls) {
+  _tp.set(x, y, z).project(camera);
+  if (_tp.z > 1 || _tp.x < -1.1 || _tp.x > 1.1 || _tp.y < -1.1 || _tp.y > 1.1) return;
+  let t = tagPool[tagN];
+  if (!t) {
+    const el = document.createElement('div'); el.className = 'hp';
+    el.innerHTML = '<b></b><i><s></s></i>';
+    tagLayer.appendChild(el);
+    t = tagPool[tagN] = { el, b: el.firstChild, s: el.lastChild.firstChild, val: -1, cls: '', w: -1 };
+  }
+  tagN++;
+  const val = Math.max(0, Math.ceil(hp));
+  if (t.val !== val) { t.val = val; t.b.textContent = val.toLocaleString('da-DK'); }
+  const frac = Math.max(0, Math.min(1, hp / max));
+  const w = Math.round(frac * 100);
+  if (t.w !== w) { t.w = w; t.s.style.width = w + '%'; }
+  const c = 'hp ' + cls + (frac < 0.3 ? ' low' : '');
+  if (t.cls !== c) { t.cls = c; t.el.className = c; }
+  const sc = Math.max(0.7, Math.min(1.15, 1.25 - (camera.position.z - z) / 90));
+  t.el.style.transform = `translate(${(_tp.x * 0.5 + 0.5) * window.innerWidth}px, ${(-_tp.y * 0.5 + 0.5) * window.innerHeight}px) translate(-50%, -100%) scale(${sc.toFixed(2)})`;
+  t.el.style.display = '';
+}
+function updateTags() {
+  tagN = 0;
+  if (S.phase === 'horde' || S.phase === 'boss') {
+    const far = TROOP_Z - 48;
+    for (const w of S.walls) if (w.alive && w.z > far) tag(w.x, 3.0, w.z, w.hp, w.max, 'wall');
+    for (const it of S.items) if (it.alive && it.kind === 'prisoner' && it.z > far) tag(it.x, 3.6, it.z, it.hp, it.max, 'prison');
+    for (const h of S.hazards) if (h.alive && h.hazard === 'boulder' && h.z > far) tag(h.x, 2.8, h.z, h.hp, h.max * S.cfg.hpScale, 'hazard');
+    for (const c of S.casterList) if (c.state !== 'dead' && c.z > far) tag(c.x, 4.2, c.z, c.hp, c.max, 'caster');
+    for (const e of S.enemies) if (e.type === 'elite' && e.state === 'run' && e.z > far) tag(e.x, 4.0, e.z, e.hp, ENEMY.elite.hp * S.cfg.hpScale, 'elite');
+    if (S.boss && S.boss.state !== 'dead') tag(S.boss.x, 7.6, S.boss.z, S.boss.hp, S.boss.max, 'boss');
+  }
+  for (let k = tagN; k < tagPool.length; k++) if (tagPool[k].el.style.display !== 'none') tagPool[k].el.style.display = 'none';
+}
+
 // hit-stop: the game freezes for a few frames on the biggest hits (only in real play, never in tests)
 let hitStop = 0;
 function freeze(t) { if (!S?.bot && !SNAP) hitStop = Math.max(hitStop, t); }
@@ -372,9 +415,9 @@ function labelTexture(text, bg, fg = '#fff') {
 }
 // every pickup is a real prop from the packs, tinted by what it gives; the label floats above it
 const KIND_STYLE = {
-  plus1: { label: '+1', color: 0x2f7cf6, stroke: '#0b2f8a', model: 'box_large', scale: 0.85, tint: [0.55, 0.72, 1.15], glow: [0.0, 0.02, 0.08] },
-  plus5: { label: '+5', color: 0x1d5fe8, stroke: '#0b2f8a', model: 'crates_stacked', scale: 1.05, tint: [0.5, 0.68, 1.15], glow: [0.0, 0.02, 0.1] },
-  plus99: { label: '+99', color: 0xf2a812, stroke: '#7a3a00', model: 'crates_stacked', scale: 1.55, tint: [1.5, 1.15, 0.45], glow: [0.2, 0.1, 0] },
+  plus1: { label: '+' + levelConfig(1).gains.plus1, color: 0x2f7cf6, stroke: '#0b2f8a', model: 'box_large', scale: 0.85, tint: [0.55, 0.72, 1.15], glow: [0.0, 0.02, 0.08] },
+  plus5: { label: '+' + levelConfig(1).gains.plus5, color: 0x1d5fe8, stroke: '#0b2f8a', model: 'crates_stacked', scale: 1.05, tint: [0.5, 0.68, 1.15], glow: [0.0, 0.02, 0.1] },
+  plus99: { label: '+' + levelConfig(1).gains.plus99, color: 0xf2a812, stroke: '#7a3a00', model: 'crates_stacked', scale: 1.55, tint: [1.5, 1.15, 0.45], glow: [0.2, 0.1, 0] },
   weapon: { label: 'VÅBEN +', color: 0x9b3df5, stroke: '#3b0a7a', model: 'chest', scale: 1.35, glow: [0.08, 0.02, 0.16] },
   weapon2: { label: 'VÅBEN ++', color: 0xd4a017, stroke: '#3b0a7a', model: 'chest_gold', scale: 1.7, glow: [0.25, 0.15, 0.0] },
   altar: { label: 'OFR', color: 0x7a0e14, stroke: '#2a0004', model: 'coffin', scale: 1.0 },
@@ -490,6 +533,7 @@ function makeWallVisual() {
   tex.colorSpace = THREE.SRGBColorSpace;
   const label = new THREE.Mesh(new THREE.PlaneGeometry(3.1, 1.33), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
   label.position.set(0, 1.7, 0.97);
+  label.visible = false; // the countdown tag above the wall shows the number now
   g.add(label);
   scene.add(g);
   return { g, canvas, tex, shown: -1 };
@@ -513,6 +557,8 @@ const SPAWN_Z = -76;
 const SHOOT_LEN = rogueBaked.clips['2H_Ranged_Shooting'].duration; // one bolt per loop
 const RELEASE = 0.14; // point in the shooting loop where the bolt leaves the crossbow
 const CONVEYOR = 2.7; // speed of everything that is not walking by itself
+// rewards you pick up by standing where they arrive (not by shooting them); prisons and walls must still be shot
+const COLLECT = new Set(['plus1', 'plus5', 'plus99', 'weapon', 'weapon2', 'rapid', 'bomb', 'mult']);
 let clock = 0; // global animation clock (never resets)
 let S;
 let visibleAlive = 0;
@@ -700,16 +746,6 @@ function sideEvent(lane, deckState, z0 = SPAWN_Z) {
     }
     case 'barrels': { for (let k = 0; k < 2; k++) addHazard('barrel', lane, z0 - k * 5); return 10; }
     case 'rapid': { addItem('rapid', lane, z0, cfg.rapidHp); return 4; }
-    case 'mult': {
-      const n = Math.max(1, Math.min(S.count, S.cfg.mult.cap));
-      gainTroops(n);
-      sfx.mult(); buzz(80); freeze(0.08);
-      showBanner('×2  +' + n, 'blue');
-      burst(it.x, 1.5, it.z, 70, [0.6, 1.6, 3.2], 11, 0.45);
-      flashScreen('rgba(120,200,255,0.95)', 0.5);
-      S.shake = Math.max(S.shake, 0.3);
-      break;
-    }
     case 'bomb': { addItem('bomb', lane, z0, cfg.bombHp); return 4; }
     default: return 4;
   }
@@ -775,16 +811,19 @@ function hordeWidth(p, z = 0) {
   return Math.max(1, Math.min(ROW_MAX, base * wave));
 }
 const RUN_STRIDE = 3.0; // ground speed (units/s) that the running cycle covers at 1x playback
-const ROW_MAX = Math.round(LANE_W * 1.25); // enemies across a full row
+const ROW_MAX = Math.round((LANE_W - 1.3) / 0.62); // enemies across a full row, shoulder to shoulder
 /** One row of enemies across a lane (fractional widths are dithered so density changes smoothly). */
 function spawnRow(lane, z, width, fast = 1) {
   const n = Math.floor(width) + (Math.random() < width % 1 ? 1 : 0);
-  const span = LANE_W - 1.0;
+  // shoulder to shoulder: the row is only as wide as it needs to be, so the mass reads as one dense block
+  const full = LANE_W - 1.0;
+  const span = Math.min(full, n * 0.62 + 0.3);
+  const centre = LANES[lane] + (lane === MID ? Math.sin(z * 0.045 + S.t * 0.15) * (full - span) * 0.45 : 0);
   const shift = Math.random(); // each row is offset differently so the rows never line up into stripes
   for (let c = 0; c < n; c++) {
     const f = ((((c + shift + (Math.random() - 0.5) * 0.7) / n) % 1) + 1) % 1; // 0..1 across the lane
-    const x = LANES[lane] - span / 2 + span * f;
-    spawnEnemy(z + (Math.random() - 0.5) * S.cfg.rowGap * 0.8, { lane, x, fast });
+    const x = centre - span / 2 + span * f;
+    spawnEnemy(z + (Math.random() - 0.5) * S.cfg.rowGap * 0.6, { lane, x, fast });
   }
 }
 
@@ -822,7 +861,7 @@ function spawnCaster(lane) {
   const c = S.cfg.caster;
   S.casterList.push({ caster: true, i, lane, x: LANES[lane], z: SPAWN_Z, hp: c.hp, max: c.hp, pending: 0, flash: 0, state: 'walk', t: 0, cast: 0, y: 0 });
   casters.play(i, 'Walking_D_Skeletons', clock, 0.9);
-  showBanner('SKELETMAGIKER', 'purple'); sfx.caster();
+  sfx.caster(panOf(LANES[lane]));
 }
 
 function spawnBoss() {
@@ -832,7 +871,7 @@ function spawnBoss() {
   const bossHp = cfg.bossHp; // fixed: a strong troop beats it, a weak one does not
   S.boss = { i, x: LANES[MID], z: SPAWN_Z - 2, hp: bossHp, max: bossHp, pending: 0, speed: cfg.bossSpeed, state: 'walk', flash: 0, atk: 0, y: 0, t: 0 };
   bosses.play(i, 'Walking_D_Skeletons', clock, 0.95);
-  showBanner('BOSS', 'red'); sfx.bossRoar(); buzz(100);
+  sfx.bossRoar(); buzz(100);
   S.shake = 0.4;
 }
 
@@ -1028,7 +1067,7 @@ const _from = new THREE.Vector3(), _to = new THREE.Vector3();
 function buildTargets() {
   for (const L of laneTargets) L.length = 0;
   for (const e of S.enemies) if (e.state === 'run') laneTargets[laneOf(e.x)].push(e);
-  for (const it of S.items) if (it.alive && !(it.lockedBy && it.lockedBy.alive)) laneTargets[it.lane].push(it);
+  for (const it of S.items) if (it.alive && !COLLECT.has(it.kind) && !(it.lockedBy && it.lockedBy.alive)) laneTargets[it.lane].push(it);
   for (const h of S.hazards) if (h.alive) laneTargets[laneOf(h.x)].push(h);
   for (const w of S.walls) if (w.alive) laneTargets[w.lane].push(w);
   if (S.boss && S.boss.state !== 'dead') laneTargets[laneOf(S.boss.x)].push(S.boss);
@@ -1075,7 +1114,7 @@ function shoot(s, dmg) {
     return false;
   }
   t.pending += dmg;
-  if (!S.bot) sfx.shoot();
+  if (!S.bot) sfx.shoot(panOf(s.x));
   _to.set(t.x + (Math.random() - 0.5) * (t.wall ? 2.4 : t.kind ? 2.6 : t === S.boss ? 0.8 : 0.3), hitHeight(t), t.z + 0.2);
   const hx = _to.x, hy = _to.y, hz = _to.z;
   bolts.fire(_from, _to, 80, () => { t.pending -= dmg; damage(t, dmg, hx, hy, hz); });
@@ -1089,6 +1128,8 @@ function damage(t, dmg, hx, hy, hz) {
     if (!t.alive) return;
     t.hp -= dmg; t.flash = 0.08;
     sparks(hx, hy, hz + 0.5, 0.9, 0.8, 0.7, 2);
+    if (Math.random() < 0.25) dust.emit(hx, hy, hz + 0.6, (Math.random() - 0.5) * 3, 1 + Math.random() * 2, 1.5, 0.62, 0.6, 0.57, 0.5, 0.6, 9); // chips fly off
+    if (!S.bot) sfx.hit(panOf(hx));
     if (t.hp <= 0) breakWall(t);
     return;
   }
@@ -1126,7 +1167,7 @@ function damage(t, dmg, hx, hy, hz) {
   const before = t.hp;
   t.hp -= dmg; t.flash = 0.09;
   sparks(hx, hy, hz, 1.0, 0.95, 0.85, 2);
-  if (!S.bot) sfx.hit();
+  if (!S.bot) sfx.hit(panOf(hx));
   if (t.hp <= 0) { killEnemy(t, true); if (dmg - before > 0.01) pierce(t, dmg - before, hx, hz); }
 }
 
@@ -1166,7 +1207,7 @@ function killEnemy(e, reward) {
   e.crowd.play(e.i, 'Death_C_Skeletons', clock, 1.15);
   if (reward) {
     const T = ENEMY[e.type];
-    if (!S.bot) sfx.kill();
+    if (!S.bot) sfx.kill(panOf(e.x));
     S.gold += T.gold; S.kills++;
     if (T.troops) {
       gainTroops(T.troops);
@@ -1181,12 +1222,18 @@ function popItem(it) {
   it.alive = false;
   S.stats.pop[it.kind] = (S.stats.pop[it.kind] || 0) + 1;
   const p = { x: it.x, y: 1.8, z: it.z };
+  if (COLLECT.has(it.kind) && !S.bot) {
+    // picked up: a burst where the troop caught it, and a clink
+    sfx.pickup(panOf(it.x));
+    const c = new THREE.Color(KIND_STYLE[it.kind].color);
+    burst(it.x, 1.0, it.z, 24, [c.r * 2.5, c.g * 2.5, c.b * 2.5], 7, 0.3);
+  }
   switch (it.kind) {
     case 'plus1': case 'plus5': case 'plus99': {
-      const n = it.kind === 'plus1' ? 1 : it.kind === 'plus5' ? 5 : 99;
-      burst(it.x, 0.6, it.z, n >= 99 ? 40 : 14, n >= 99 ? [2.4, 1.6, 0.2] : [0.5, 1.0, 2.6]);
+      const n = S.cfg.gains[it.kind];
+      burst(it.x, 0.6, it.z, n >= 50 ? 40 : 14, n >= 50 ? [2.4, 1.6, 0.2] : [0.5, 1.0, 2.6]);
       gainTroops(n);
-      if (n >= 99) S.shake = Math.max(S.shake, 0.25);
+      if (n >= 50) S.shake = Math.max(S.shake, 0.25);
       break;
     }
     case 'weapon': {
@@ -1225,6 +1272,15 @@ function popItem(it) {
       showBanner('2× SKUD', 'orange'); sfx.power(); buzz(30);
       burst(it.x, 0.8, it.z, 40, [3.0, 1.4, 0.3], 9, 0.4);
       for (const s of S.troop) retime(s);
+      break;
+    }
+    case 'mult': {
+      const n = Math.max(1, Math.min(S.count, S.cfg.mult.cap));
+      gainTroops(n);
+      sfx.mult(); buzz(80); freeze(0.08);
+      flashScreen('rgba(120,200,255,0.95)', 0.5);
+      troopRing([0.6, 1.6, 3.2], 80);
+      S.shake = Math.max(S.shake, 0.3);
       break;
     }
     case 'bomb': {
@@ -1266,7 +1322,7 @@ function breakWall(w) {
   S.shake = Math.max(S.shake, 0.6);
   for (let k = 0; k < 40; k++) puff(w.x + (Math.random() - 0.5) * 4.5, Math.random() * 2, w.z, 1, [0.6, 0.58, 0.55], 1.8);
   burst(w.x, 1, w.z, 60, [2.4, 1.4, 0.5], 12, 0.3);
-  sfx.wall(); buzz(40);
+  sfx.wall(panOf(w.x)); buzz(40);
 }
 
 function killBoss() {
@@ -1317,7 +1373,7 @@ function updateCasters(dt, playing) {
     }
     if (c.flash > 0) c.flash -= dt;
     casters.flash(c.i, Math.max(0, c.flash) * 12);
-    casters.setTransform(c.i, c.x, c.y, c.z, 0, 1.7);
+    casters.setTransform(c.i, c.x, c.y, c.z, 0, 2.2);
     if (c.state !== 'dead') blob(c.x, c.z, 1.6);
   }
   S.casterList = S.casterList.filter((c) => { if (c.remove) { casters.release(c.i); return false; } return true; });
@@ -1467,15 +1523,29 @@ function botTarget(style) {
   for (const e of S.enemies) if (e.state === 'run' && e.z > TROOP_Z - 22) threat[laneOf(e.x)] += e.hp * (e.z > LANE_END_Z - 4 ? 2 : 1);
   if (S.boss && S.boss.state !== 'dead' && S.boss.z > TROOP_Z - 30) threat[laneOf(S.boss.x)] += S.boss.hp;
   for (const c of S.casterList) if (c.state === 'cast') threat[c.lane] += dps * 3;
-  for (const it of S.items) if (it.alive && it.z > TROOP_Z - TROOP.range) { reward[it.lane] += style === 'noweapon' && /weapon/.test(it.kind) ? 0 : VALUE[it.kind]; cost[it.lane] += it.hp; }
+  for (const it of S.items) {
+    if (!it.alive) continue;
+    const v = style === 'noweapon' && /weapon/.test(it.kind) ? 0 : VALUE[it.kind];
+    if (COLLECT.has(it.kind)) { if (it.z > TROOP_Z - 14) reward[it.lane] += v * 3; } // about to arrive: be there
+    else if (it.z > TROOP_Z - TROOP.range) { reward[it.lane] += v; cost[it.lane] += it.hp; }
+  }
   for (const w of S.walls) if (w.alive && w.z > TROOP_Z - TROOP.range) cost[w.lane] += w.hp;
   // dodge: a hazard about to reach the camp in a lane makes that lane off-limits
   const avoid = [false, false, false];
   for (const h of S.hazards) if (h.alive && h.z > TROOP_Z - 16) avoid[laneOf(h.x)] = true;
   if (style !== 'nododge') for (const r of S.rocks) if (r.t > 0.3) avoid[laneOf(r.tx)] = true;
+  for (const w of S.walls) if (w.alive && w.z > TROOP_Z - 9 && w.hp > dps * 1.2) avoid[w.lane] = true;
   const worst0 = threat.indexOf(Math.max(...threat));
   const worst = avoid[worst0] ? [LEFT, MID, RIGHT].filter((L) => !avoid[L]).sort((a, b) => threat[b] - threat[a])[0] ?? worst0 : worst0;
   for (const L of [LEFT, MID, RIGHT]) if (avoid[L]) reward[L] = 0;
+  // catching pickups: if something good arrives in a lane within ~2 s and the middle horde is not at the door, go there
+  let front = 99;
+  for (const e of S.enemies) if (e.state === 'run' && laneOf(e.x) === MID) front = Math.min(front, TROOP_Z - e.z);
+  const catchV = [0, 0, 0];
+  for (const it of S.items) if (it.alive && COLLECT.has(it.kind) && it.z > TROOP_Z - 9 && it.z < TROOP_Z) catchV[it.lane] += style === 'noweapon' && /weapon/.test(it.kind) ? 0 : VALUE[it.kind];
+  for (const L of [LEFT, RIGHT]) if (avoid[L]) catchV[L] = 0;
+  const bestCatch = catchV.indexOf(Math.max(...catchV));
+  if (catchV[bestCatch] > 0 && front > (style === 'weak' ? 14 : 11)) return LANES[bestCatch] + (Math.random() - 0.5) * 0.5;
   // 'weak' = a cautious player who mostly defends and only grabs what is cheap
   if (threat[worst] > dps * (style === 'weak' ? 0.4 : 1.1)) return LANES[worst];
   let bestL = worst, bestV = 0;
@@ -1491,6 +1561,10 @@ function botTarget(style) {
 function update(dt) {
   clock += dt;
   setVatTime(clock);
+  if (!S.bot && Math.floor(clock * 4) !== Math.floor((clock - dt) * 4)) {
+    let near = 0; for (const e of S.enemies) if (e.state === 'run' && e.z > -45) near++;
+    setHordeLevel(S.phase === 'menu' || S.phase === 'won' || S.phase === 'lost' ? 0 : Math.min(1, 0.25 + near / 250));
+  }
   if (S.phase === 'menu') { glow.update(dt); dust.update(dt); updateFires(dt); return; } // map/base on top: the battlefield waits
   const playing = S.phase === 'horde' || S.phase === 'boss';
   if (playing) S.t += dt;
@@ -1521,9 +1595,9 @@ function update(dt) {
     for (const ev of S.timeline) {
       if (ev.done || p < ev.at) continue;
       ev.done = true;
-      if (ev.type === 'rush') { S.rush = cfg.rush.time; showBanner('STORMLØB', 'red'); sfx.warn(); }
+      if (ev.type === 'rush') { S.rush = cfg.rush.time; sfx.warn(); }
       if (ev.type === 'caster') spawnCaster(ev.lane ?? (Math.random() < 0.5 ? LEFT : RIGHT));
-      if (ev.type === 'mult') { addItem('mult', MID, SPAWN_Z, cfg.mult.hp); showBanner('×2 PORT', 'blue'); }
+      if (ev.type === 'mult') addItem('mult', MID, SPAWN_Z, cfg.mult.hp);
     }
     // a new row enters every time the mass has advanced one row gap: the lane never empties behind it
     S.rowAcc += S.hordeSpeed * dt;
@@ -1665,7 +1739,7 @@ function update(dt) {
     }
     if (S.boss) {
       if (b.flash > 0) { b.flash -= dt; bosses.flash(b.i, Math.max(0, b.flash) * 12); }
-      bosses.setTransform(b.i, b.x, b.y, b.z, 0, 3.0);
+      bosses.setTransform(b.i, b.x, b.y, b.z, 0, 3.8);
       if (b.state !== 'dead' || b.t < 2.5) blob(b.x, b.z, 3.2);
     }
   }
@@ -1678,7 +1752,7 @@ function update(dt) {
   updateRocks(dt);
   updateBearer(dt);
   updateFires(dt);
-  updateDamageNumbers(dt);
+  if (!S.bot) updateTags();
   updateDelta(dt);
   if (S.troopFlash > -0.1) S.troopFlash -= dt;
 
@@ -1728,7 +1802,17 @@ function updateConveyor(dt) {
   for (const w of S.walls) {
     if (!w.alive) continue;
     w.z += CONVEYOR * dt;
-    if (w.z > exitZ) { w.alive = false; w.v.g.visible = false; wallPool.push(w.v); puff(w.x, 0.5, w.z, 8, [0.6, 0.58, 0.55], 1.6); continue; }
+    // a wall that reaches the troop crushes everyone standing in its lane
+    if (!w.crushed && w.z > TROOP_Z - troopRadius() * 0.7 - 1.0) {
+      w.crushed = true;
+      if (Math.abs(S.cx - w.x) < LANE_W / 2 + troopRadius() * 0.5 && (S.phase === 'horde' || S.phase === 'boss')) {
+        loseTroops(S.cfg.wallKills, w.x, w.z);
+        flashScreen('rgba(255,60,30,0.9)', 0.4); S.shake = Math.max(S.shake, 0.8); sfx.wall(panOf(w.x)); buzz(120);
+        for (let k = 0; k < 40; k++) puff(w.x + (Math.random() - 0.5) * 4.5, Math.random() * 2, w.z, 1, [0.6, 0.58, 0.55], 1.8);
+        w.alive = false; w.v.g.visible = false; wallPool.push(w.v); continue;
+      }
+    }
+    if (w.z > TROOP_Z + 4) { w.alive = false; w.v.g.visible = false; wallPool.push(w.v); continue; }
     if (w.flash > 0) w.flash -= dt;
     w.v.g.position.set(w.x + (w.flash > 0 ? (Math.random() - 0.5) * 0.08 : 0), 0.05, w.z);
     drawWallHp(w.v, w.hp);
@@ -1742,8 +1826,13 @@ function updateConveyor(dt) {
     // never pass through a standing wall in the same lane
     let limit = Infinity;
     for (const w of S.walls) if (w.lane === it.lane && w.z > it.z) limit = Math.min(limit, w.z - 1.6);
-    it.z = Math.min(limit, it.z + (it.kind === 'mult' ? S.hordeSpeed * 0.9 : CONVEYOR) * dt); // the ×2 gate rides inside the horde
-    if (it.z > exitZ) { it.alive = false; it.pop = 1; if (it.statue >= 0 && it.statue !== undefined) { statues.release(it.statue); it.statue = -1; } puff(it.x, 0.4, it.z, 5, [0.6, 0.7, 0.9]); continue; }
+    it.z = Math.min(limit, it.z + CONVEYOR * (COLLECT.has(it.kind) && it.z > LANE_END_Z ? 1.6 : 1) * dt);
+    if (COLLECT.has(it.kind)) {
+      // picked up when it reaches the front of the troop while the troop stands in its path
+      const reach = it.kind === 'mult' ? 2.6 : 1.2;
+      if (it.z > TROOP_Z - troopRadius() * 0.7 - 0.6 && it.z < TROOP_Z + 1 && Math.abs(it.x - S.cx) < troopRadius() + reach && (S.phase === 'horde' || S.phase === 'boss')) { popItem(it); it.pop = 1; continue; }
+      if (it.z > TROOP_Z + 3) { it.alive = false; it.pop = 1; continue; } // missed: it rolls on past the troop
+    } else if (it.z > exitZ) { it.alive = false; it.pop = 1; if (it.statue >= 0 && it.statue !== undefined) { statues.release(it.statue); it.statue = -1; } puff(it.x, 0.4, it.z, 5, [0.6, 0.7, 0.9]); continue; }
     if (it.flash > 0) it.flash -= dt;
     if (it.kind === 'prisoner') {
       statues.setTransform(it.statue, it.x, 0.05, it.z, 0, 1.55);
@@ -1764,9 +1853,11 @@ function updateConveyor(dt) {
     const kd = kinds[it.kind];
     if (kd.n >= kd.max) continue;
     const bump = (it.flash > 0 ? 1.07 : 1) * kd.scale;
-    const bob = /weapon|rapid|bomb/.test(it.kind) ? Math.abs(Math.sin(clock * 3 + it.z)) * 0.25 : 0;
+    const bob = kd.big ? 0 : 0.15 + Math.abs(Math.sin(clock * 3 + it.z)) * 0.3;
     _p.set(it.x, kd.lift + 0.05 + bob, it.z); _s.set(bump, bump, bump);
-    _m.compose(_p, _q.identity(), _s);
+    if (kd.big) _q.identity(); else _q.setFromAxisAngle(_yAxis, Math.sin(clock * 1.6 + it.z) * 0.5);
+    _m.compose(_p, _q, _s);
+    if (!kd.big && Math.random() < 0.08) { const c = new THREE.Color(kd.color); glow.emit(it.x + (Math.random() - 0.5), 0.2, it.z + (Math.random() - 0.5), 0, 1.5, 0, c.r * 2, c.g * 2, c.b * 2, 0.3, 0.6, -1); }
     kd.set.add(_m, it.flash > 0 ? 2.4 : 1);
     if (kd.big) _p.set(it.x, kd.h * 0.5, it.z + 0.9); // ×2 hangs in front of the gate bars
     else _p.set(it.x, kd.h + 0.55 + bob, it.z + 0.1);

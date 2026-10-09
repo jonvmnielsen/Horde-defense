@@ -146,9 +146,26 @@
   #over .btns, #win .btns { display: flex; gap: 10px; justify-content: center; }
   #over .btns button.alt, #win .btns button.alt { background: #4a5468; box-shadow: 0 4px 0 #23293a; }
   body.inmenu #hud, body.inmenu #floaters { visibility: hidden; }
+  /* countdown tags over everything you have to shoot */
+  #tags { position: fixed; inset: 0; pointer-events: none; overflow: hidden; font-family: var(--font); }
+  .hp { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; transform-origin: 50% 100%; will-change: transform; }
+  .hp b { font-weight: 400; font-size: 22px; color: #fff; -webkit-text-stroke: 4px #1b1b24; paint-order: stroke fill; line-height: 1; }
+  .hp i { display: block; width: 56px; height: 7px; border-radius: 4px; background: rgba(0,0,0,0.55); border: 1.5px solid rgba(255,255,255,0.85); overflow: hidden; }
+  .hp s { display: block; height: 100%; width: 100%; background: #ffd23f; text-decoration: none; transition: width .1s; }
+  .hp.wall s { background: #e8e2d8; } .hp.wall b { font-size: 26px; }
+  .hp.prison s { background: #c38bff; } .hp.prison b { color: #ecd8ff; }
+  .hp.caster s { background: #b06bff; }
+  .hp.elite s { background: #ffc533; } .hp.elite b { color: #ffe39a; }
+  .hp.hazard s { background: #ff7a4a; }
+  .hp.boss b { font-size: 26px; color: #ffd0c8; } .hp.boss i { width: 90px; } .hp.boss s { background: #ff4d3a; }
+  .hp.low b { color: #ff8a73; animation: lowp .4s ease-in-out infinite; }
+  .hp.low s { background: #ff4d3a; }
+  @keyframes lowp { 50% { transform: scale(1.15); } }
+  body.inmenu #tags { visibility: hidden; }
   #debug { position: absolute; bottom: 4px; left: 6px; font: 11px/1.2 ui-monospace, monospace; color: #fff; text-shadow: 0 1px 0 #000; }
 </style>
 <canvas id="c"></canvas>
+<div id="tags"></div>
 <div id="floaters"></div>
 <div id="hud">
   <div class="topbar">

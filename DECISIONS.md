@@ -49,3 +49,10 @@
 | 2026-10-08 | Tælleren over truppen er al feedback på antal | Gevinst og tab vises ét sted, hvor øjet allerede er. |
 | 2026-10-08 | Base med 10 opgraderinger og stigende priser; guld fra resultat i stedet for drab | Jon havde alt efter 2-3 baner; drab gav ~3000 guld pr. bane. |
 | 2026-10-08 | Nye asset-pakker fra tredjeparts kopier bruges ikke uden Jons OK | Licensen skal kunne læses i kildens egen fil (CLAUDE.md). |
+| 2026-10-09 | Belønninger samles op ved at stå hvor de ankommer | Jon: man skal ikke skyde på alt. Valget er nu: forlad midten for at fange, mens horden rykker nærmere. |
+| 2026-10-09 | Mure ruller videre og knuser truppen i deres spor | Jon: mure skal skydes i stykker for ikke at blive mast. |
+| 2026-10-09 | Nedtælling (tal + bjælke) over alt man skal skyde ned | Jon: man skal kunne se hvor meget der mangler. |
+| 2026-10-09 | Tæt pakket horde; specialfjender markant større | Jon: massen var ikke tæt nok, og særlige fjender skal kunne ses på størrelsen. |
+| 2026-10-09 | Ingen bannertekst om fjender | Jon: forandringen i massen skal fortælle hvad der sker. |
+| 2026-10-09 | Lyde renderes fra fysiske opskrifter (numpy) i stedet for live-synth | Jon: de første lyde var klik. Optagede lyde kræver pakker der ikke kan hentes herfra; renderede lyde har ingen licens at tjekke. |
+| 2026-10-09 | Opsamlede kasser giver +2 / +8 / +60 | Man skal være der for at få dem, så de må være mere værd. |

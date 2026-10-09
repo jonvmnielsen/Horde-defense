@@ -32,4 +32,6 @@ for (const f of fs.readdirSync('public/assets').filter((f) => f.endsWith('.glb')
   fs.writeFileSync(out, JSON.stringify(json));
   console.log(out, (fs.statSync(out).size / 1024).toFixed(0), 'KB');
 }
+// sound effects (rendered by tools/make-sounds.py)
+fs.cpSync('public/sounds', 'dist/sounds', { recursive: true });
 console.log('built', (fs.statSync('dist/game.js').size / 1024).toFixed(0), 'KB');

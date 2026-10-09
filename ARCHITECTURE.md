@@ -6,7 +6,8 @@ src/main.js           opsætning (renderer, lys, post-processing), spillogik, HU
 src/vat.js            bager glTF-animationer til teksturer + instanced "Crowd"-pulje
 src/world.js          statisk miljø: spor, gårdsplads, kirkegård, ruiner, skov, himmel
 src/fx.js             partikler, armbrøstbolte, flydende tal
-src/audio.js          syntetiserede lydeffekter (WebAudio) og vibration; låses op ved første berøring
+src/audio.js          afspiller lydene (WebAudio): varianter, tonehøjde, stereo, loft over samtidige; hordens lydløkke
+tools/make-sounds.py  renderer alle lyde til public/sounds/*.mp3 (numpy + ffmpeg)
 src/props.js          PropSet: instanced kopier af en statisk model (kister, kasser, porte)
 src/levels.js         al balance: banelængde, fjendetal, liv, mur, boss, guld
 tools/sim.py          spiller hele baner headless med bots og printer resultatet
@@ -52,3 +53,9 @@ Ved indlæsning afspilles hver valgt animation på CPU'en, og hver vertex' posit
 - `showBanner()` skriver øverst (CSS `#banner`); `weaponUp()` samler alt ved nyt våben; `freeze(t)` giver hit-stop i `frame()`.
 - `BASE` i levels.js: hver opgradering har `max`, `cost(lv)`, `value(lv)`, `text(v)` og en gruppe. `beginLevel` omsætter dem til `S.mods` (dmg, rate, hero, power, gold, medic) og startsoldater.
 - Gemt spil: `hordeforsvar.v2`.
+
+## Runde 10: opsamling og nedtælling
+- `COLLECT` (main.js): genstande der fanges, ikke skydes. `updateConveyor` samler dem op når de når truppens front og truppen står i vejen; ellers ruller de forbi.
+- Mure (`S.walls`) ruller helt ind til truppen; `wallKills` soldater mistes hvis truppen står i sporet.
+- `tag()`/`updateTags()`: HTML-nedtælling over mure, fanger, kampesten, magikere, guldkrigere, boss (`#tags`).
+- `spawnRow()` pakker rækken tæt (0,62 pr. fjende) og lader massen slingre i midtersporet.

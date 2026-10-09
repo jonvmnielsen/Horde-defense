@@ -4,7 +4,7 @@
 
 export const TROOP = {
   visibleMax: 110, // soldiers drawn on screen; above this each drawn soldier fires for several (keeps the troop on screen)
-  start: 12, // soldiers at the start of level 1 (each later level starts with startPerLevel more)
+  start: 16, // soldiers at the start of level 1 (each later level starts with startPerLevel more)
   startPerLevel: 8, // until the base exists, survivors go home instead of into the next level
   boltDamage: 1,
   range: 32, // how far ahead the crossbows reach (lanes are ~70 long)
@@ -30,10 +30,10 @@ export const EVENTS = {
 // Enemy types. Their strength is FIXED: they never scale with the player. Pressure comes from numbers and from special types.
 // hp is multiplied by the level's hpScale (a little more each level). cost = soldiers lost when one reaches the troop.
 export const ENEMY = {
-  minion: { hp: 1, cost: 1, gold: 0, scale: 1 }, // the endless mass
-  warrior: { hp: 14, cost: 3, gold: 0.15, scale: 1 }, // armoured skeletons mixed into the mass
-  brute: { hp: 45, cost: 6, gold: 0.5, scale: 1.3 }, // Kæmpe: a big armoured skeleton, more of them late in the level
-  elite: { hp: 160, cost: 12, gold: 5, troops: 10, scale: 1.55 }, // Guldkriger: big, golden, pays +10 soldiers
+  minion: { hp: 1, cost: 1, gold: 0, scale: 0.92 }, // the endless mass
+  warrior: { hp: 14, cost: 3, gold: 0.15, scale: 1.35 }, // armoured skeletons mixed into the mass
+  brute: { hp: 45, cost: 6, gold: 0.5, scale: 1.95 }, // Kæmpe: a big armoured skeleton, more of them late in the level
+  elite: { hp: 160, cost: 12, gold: 5, troops: 10, scale: 2.5 }, // Guldkriger: big, golden, pays +10 soldiers
 };
 
 export function levelConfig(n) {
@@ -44,10 +44,10 @@ export function levelConfig(n) {
     hpScale: 1 + k * 0.35, // every enemy type is a bit tougher on each new level (never during a level)
     minionHp: k < 2 ? 1 : 1 + (k - 1) * 0.5, // the basic skeleton stays one-shot on level 2 (a crossbow bolt does 1), then gets tougher in steps
     // the middle horde is one packed mass that fills the lane from end to end
-    hordeSpeed: [3.2 + k * 0.1, 5.2 + k * 0.15], // running speed at the start / end of the level (units per second)
-    hordeWidth: [2.4 + k * 0.5, 9], // enemies per row across the 7.5-wide lane, start / end
+    hordeSpeed: [2.9 + k * 0.1, 5.0 + k * 0.15], // running speed at the start / end of the level (units per second)
+    hordeWidth: [3.0 + k * 0.5, 10], // enemies per row across the 7.5-wide lane, start / end
     hordeWave: 0.3, // rows swell and thin in waves (+/- 30 %)
-    rowGap: 1.0, // distance between rows (they run, so rows are a little further apart)
+    rowGap: 0.8, // distance between rows: shoulder to shoulder, one dense mass
     hordeStartZ: -30, // the mass already fills the lane from here back when the level starts
     bossEscortWidth: 2.5,
     warriorShare: [0.04, 0.4 + k * 0.03], // share of armoured warriors in the mass, start / end of the level
@@ -73,16 +73,19 @@ export function levelConfig(n) {
     // rolling hazards: shoot them or get out of the way. Barrels blow up (also in the horde: good to shoot!), boulders crush.
     hazard: { every: 9, boulderShare: 0.35, barrel: { hp: 6, speed: 6.5, radius: 0.7, kills: 14, blast: 4.5, damage: 30 }, boulder: { hp: 260, speed: 5, radius: 1.6, kills: 22 } },
     squadSize: [18, 40], // skeleton squads in the side lanes (grows over the level)
+    // pickups: soldiers gained when the troop catches them (+1 crates are worth more now that you must be there)
+    gains: { plus1: 2, plus5: 8, plus99: 60 },
     plus1Hp: 2.5 + k * 0.3,
     plus5Hp: 12 + k * 2,
-    fortHp: 2200 + k * 400, // wall guarding a +99 block
+    fortHp: 900 + k * 250, // wall guarding a +99 block; it rolls on and crushes the troop if it is not shot down
+    wallKills: 18 + k * 4, // soldiers lost when a wall reaches the troop in its lane
     // reward budget per level: once spent, the side lanes deal squads, +1 rows, bombs and rapid fire instead
     budget: { fort: 2, weapon: 3, weapon2: 1, prisoner: 2 }, // OFFERPORT (altar) is parked: the code stays, it is just not dealt
     plus99Hp: 150 + k * 30,
     weaponHp: 45 + k * 20, // "VÅBEN +" chest (one tier)
     rapidHp: 30, rapidTime: 10,
     bombHp: 35, bombRadius: 9, bombDamage: 40 + k * 10,
-    bigWeaponWallHp: 450 + k * 120, // "VÅBEN ++": two weapon tiers at once, well guarded
+    bigWeaponWallHp: 400 + k * 120, // "VÅBEN ++": two weapon tiers at once, well guarded
     bigWeaponHp: 160 + k * 30,
     prisonHp: 320 + k * 70, // stone prison holding a hero
     maxHeroes: 3,

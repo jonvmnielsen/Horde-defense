@@ -27,3 +27,14 @@ Filerne siger selv CC0, men de ligger i tredjeparts repos, så efter vores regel
 | Kenney Blaster Kit / Graveyard Kit / Tower Defense Kit | https://www.kenney.nl/assets | Våben, kirkegård, forsvarstårne |
 
 Læg zip-filerne i repoet (fx `incoming/`), så pakker jeg dem ud og tjekker licensen.
+
+## Lyd: optagede lyde (skal hentes manuelt; kan ikke nås herfra)
+| Pakke | Side | Indhold |
+|---|---|---|
+| Kenney Impact Sounds (CC0) | https://kenney.nl/assets/impact-sounds | Slag på træ, metal, sten, glas |
+| Kenney RPG Audio (CC0) | https://kenney.nl/assets/rpg-audio | Kister, mønter, rustning, skridt, knive |
+| Kenney Interface Sounds (CC0) | https://kenney.nl/assets/interface-sounds | Knapper og menuer |
+| Sonniss GDC Game Audio Bundle (royalty-free, ikke CC0) | https://sonniss.com/gameaudiogdc | Mange GB professionelle optagelser: våben, eksplosioner, monstre |
+| OpenGameArt: Zombies sound pack | https://opengameart.org/content/zombies-sound-pack | Zombie-stønnen (tjek licens på siden) |
+| OpenGameArt: Zomby SFX pack | https://opengameart.org/content/zomby-sfx-pack | Zombie-lyde (tjek licens på siden) |
+| Still North Media: Medieval Weapons / Firearm Sound Library (CC0) | http://www.stillnorthmedia.com/medieval-weapon.html | Buer, pile, sværd; skydevåben |
