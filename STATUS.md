@@ -3,20 +3,17 @@
 _Senest opdateret: 2026-10-08_
 
 ## Nu
-Runde 11 (9. okt): talporte, få store mod mange små belønninger, kortere baner, stjernegrænse, musik og nye dybe lyde, endeløs tilstand, 3D-base.
+Runde 12 (11. okt): asset-biblioteket (jonvmnielsen/game-assets) tages i brug, fuld opløsning, ny balance i talportene.
 
-- **Sidesporene kommer i par ("møder"):** begge sider ankommer samtidig, så man vælger én (eller bliver i midten).
-  - Talporte: fx +9 mod −10 eller +8 mod ×2. Skyd på en port for at hæve tallet (−10 kan blive +5). ×2-porte også midt i horden.
-  - Små mod store: den ene side mange +2-kasser spredt over sporet; den anden side vagter, en mur (nedtælling) og en stor belønning lige bag (+60, VÅBEN ++ eller en helt). Brydes muren ikke i tide, knuser den truppen i sporet og begraver belønningen. Lige når muren ankommer, kommer et stormløb i midten (planlagt næsten-tab).
-  - Øvrige: våbenkiste bag vagter mod +8-kasser, 2× skud mod bombe, skeletgrupper i begge sider, krudttønder mod +2-kasser.
-- **Bredere spor (8,4), tættere trup,** og man skal stå mere præcist for at fange kasser. Antallet står midt i truppen.
-- **Kortere baner:** 45 s på bane 1, +8 s pr. bane (højst 110). Bane 1 har én skeletmagiker og ét stormløb.
-- **Stjernegrænse** under fremskridtsbjælken: ★★ og ★★★ lyser, når truppen er stor nok.
-- **Lyd:** alt lavet om til dybt og blødt: dybe eksplosioner med lang rumlen, krigsråb fra en hel hær (op til 55 stemmer), armbrøst-salver som tre lydløkker der bliver tættere og tungere jo mere truppen skyder, stønnende soldater, krigstrommer. Ingen klokker.
-- **Musik:** kamp, boss og base (trommer, dybe strygere, horn, kor). `tools/make-music.py`.
-- **Endeløs:** fra kortet efter bane 2. Hele reserven går med og kommer aldrig hjem; hvert minut kommer en boss og sværhedsgraden hopper to baner. Rekord gemmes.
-- **3D-base:** en landsby med en bygning pr. opgradering. Byggepladser (stillads) for det der kan bygges, låste grunde (ruin + hegn) for senere baner, bygninger der vokser, får udbygninger og flag (guldflag på max). Reserven står samlet på torvet og jubler ved køb. Tryk på en bygning for at bygge/opgradere; træk op/ned for at se rundt.
-- **Bot-test:** bane 1 vinder 4/6, kun-midten taber efter 19 s. Bane 4 uden base 1/3 (basen skal bruges).
+- **Fra biblioteket** (`assets.json`, `node ../game-assets/tools/sync.mjs .`, så `tools/lib-audio.sh`):
+  - Heltinder: KayKit Adventurers 2.0-heksen med 2.0-riggens animationer (kast = besværgelse) som Ild-, Frost- og Helbredelsesheltinde; også stenstatuerne i fængslerne.
+  - Optagede lyde: Kenney Impact (træf, knogler, plader, sten), Kenney RPG (mønter, klæde, kniv der trækkes), Sonniss GDC (kød-træf, skjoldslag, eksplosion, metal, træ der knækker) og 24 zombie-stønnen fra horden (licens ikke verificeret, Jons beslutning D-010 i biblioteket). Lagt oven på de renderede dybe lyde.
+- **Opløsning:** fuld skærmopløsning på telefonen (iPhone 3×), falder aldrig under 2×. MSAA sænkes til 2× ved 3× opløsning for at spare.
+- **Talporte:**
+  - Porte følger truppens størrelse (ca. 20-35 % af truppen), så de betyder lige meget sent i banen.
+  - Aldrig samme slags port i begge sider: *sikker vs. chance* (fast +N mod en minusport der kan skydes op til et loft over N), *×2 vs. lille plus der kan skydes op*, eller *fælde* (fast minus ved siden af et fast plus).
+  - Kun porte med ▲ kan skydes op, og kun til deres loft ("▲ op til +36", derefter MAX). Prisen sættes efter truppens ildkraft, så det altid tager ca. 4,5 s af hele truppens ild at skyde en port helt op, og hvert point koster lidt mere end det forrige.
+- **Bane 1 blødere:** 20 soldater fra start, to våbenmøder i åbningen, intet slut-stormløb, boss 6.500 liv. Bot-test: 5/6 sejre.
 
 ## Udgivelse
 - Live på https://jonvmnielsen.github.io/Horde-defense/ (GitHub Pages, udgives automatisk ved push til `main`).

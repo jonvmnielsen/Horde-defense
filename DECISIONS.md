@@ -66,3 +66,8 @@
 | 2026-10-09 | Endeløs tilstand bruger hele reserven | Designdokumentet: endeløs med dødsdømt trup trænet i basen. |
 | 2026-10-09 | Basen som 3D-landsby (Medieval Hexagon) | Jon: basen skal være visuel med bygninger der ændrer sig. |
 | 2026-10-09 | Ny fanebærer og heltinder venter på pakker | Kræver figurer vi ikke har lov til at hente herfra. |
+| 2026-10-11 | Assets hentes fra Jons bibliotek (game-assets) via `assets.json` + sync | Ét sted for licenser og optimering; spillet tager kun det, det bruger. |
+| 2026-10-11 | Heltinder = Adventurers 2.0-heksen i tre farver | Jon ønskede kvinder i spillet; første kvindelige figur med passende animationer i biblioteket. |
+| 2026-10-11 | Optagede lyde lagt oven på renderede | Biblioteket har ingen armbrøster eller krigsråb endnu; optagelser giver træf, død, mønter og eksplosioner tyngde. |
+| 2026-10-11 | Fuld opløsning (op til 3×) | Jon: skal stå skarpere. |
+| 2026-10-11 | Porte med loft, pris efter ildkraft og forskellige slags i hver side | Jon: når begge sider var ens og en port kunne skydes til 99 på et sekund, forsvandt balancen. |

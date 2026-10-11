@@ -4,7 +4,7 @@
 
 export const TROOP = {
   visibleMax: 90, // soldiers drawn on screen; above this each drawn soldier fires for several (keeps the troop on screen)
-  start: 16, // soldiers at the start of level 1 (each later level starts with startPerLevel more)
+  start: 20, // soldiers at the start of level 1 (each later level starts with startPerLevel more)
   startPerLevel: 8, // until the base exists, survivors go home instead of into the next level
   boltDamage: 1,
   range: 32, // how far ahead the crossbows reach (lanes are ~70 long)
@@ -45,12 +45,12 @@ export function levelConfig(n) {
     minionHp: k < 2 ? 1 : 1 + (k - 1) * 0.5, // the basic skeleton stays one-shot on level 2 (a crossbow bolt does 1), then gets tougher in steps
     // the middle horde is one packed mass that fills the lane from end to end
     hordeSpeed: [2.9 + k * 0.1, 5.0 + k * 0.15], // running speed at the start / end of the level (units per second)
-    hordeWidth: [2.8 + k * 0.55, 10], // enemies per row across the 7.5-wide lane, start / end
+    hordeWidth: [2.8 + k * 0.55, Math.min(10, 7 + k * 0.6)], // enemies per row across the 7.5-wide lane, start / end
     hordeWave: 0.3, // rows swell and thin in waves (+/- 30 %)
     rowGap: 0.8, // distance between rows: shoulder to shoulder, one dense mass
     hordeStartZ: -30, // the mass already fills the lane from here back when the level starts
     bossEscortWidth: 2.5,
-    warriorShare: [0.04, 0.4 + k * 0.03], // share of armoured warriors in the mass, start / end of the level
+    warriorShare: [0.04, Math.min(0.5, 0.25 + k * 0.05)], // share of armoured warriors in the mass, start / end of the level
     bruteShare: [0, 0.2 + k * 0.03], // share of Kæmper (from 30 % of the level)
     eliteEvery: 6 - Math.min(3, k * 0.7), // seconds between Guldkrigere
     rush: { time: 3.5, speed: 1.5, width: [5, 9] }, // STORMLØB: a wide block that sprints (narrower early in the level)
@@ -60,7 +60,7 @@ export function levelConfig(n) {
       ...(k >= 1 ? [{ at: 0.25, type: 'rush' }] : []), // level 1 is gentle: one caster and a final rush
       { at: 0.5, type: 'caster' },
       ...(k >= 1 ? [{ at: 0.62, type: 'rush' }] : []),
-      { at: 0.85, type: 'rush' },
+      ...(k >= 1 ? [{ at: 0.85, type: 'rush' }] : []),
       ...(k >= 1 ? [{ at: 0.8, type: 'caster' }] : []),
       ...(k >= 2 ? [{ at: 0.3, type: 'caster' }] : []),
       // ×2 gates ride inside the horde: be in the middle when they arrive
@@ -73,10 +73,10 @@ export function levelConfig(n) {
     encounters: {
       gap: [1.2, 2.4], // seconds between encounters
       deck: ['gates', 'gates', 'gates', 'smallbig', 'smallbig', 'weapon', 'power', 'squads', 'hazard'],
-      opening: ['gates', 'weapon', 'gates', 'smallbig'], // first encounters of every level, in order
+      opening: ['gates', 'weapon', 'gates', 'weapon', 'smallbig'], // first encounters of every level, in order
     },
     // number gates: run through them. Shooting a gate raises its number by 1 per gateStep damage (so -8 can become +5)
-    gate: { add: [4 + k * 1.5, 12 + k * 3], minus: [4 + k * 2, 12 + k * 4], step: 5 + k * 2.5, max: 99, multCap: 90 + k * 40 },
+    gate: { add: [9 + k * 2, 15 + k * 3], raiseTime: 4.5, stepGrowth: 0.05, multCap: 90 + k * 40 }, // raiseTime: seconds of the whole troop's fire to shoot a gate up to its cap
     smallCrates: [8, 12], // the "many small" side: +2 crates scattered across the lane
     altar: { hp: 25, share: 0.3, min: 15 }, // OFFERPORT: costs 30 % of the troop (at least 15), hands over VÅBEN ++ or a hero
     // rolling hazards: shoot them or get out of the way. Barrels blow up (also in the horde: good to shoot!), boulders crush.
@@ -103,7 +103,7 @@ export function levelConfig(n) {
     heroRange: 36,
     heroHeal: 3 + k, // HELBREDER: soldiers back on their feet per spell (about every 2 s)
     frostSlow: 3, // FROSTMAGIKER: seconds a frozen enemy crawls at a third of its speed
-    bossHp: 9000 + k * 9000, // fixed per level
+    bossHp: 6500 + k * 8000, // fixed per level
     bossSpeed: 2.8,
     bossKillsPerSwing: 6 + k,
     bossThrow: { every: 3.2, warn: 1.5, radius: 2.4, kills: 8 + k * 2 }, // rocks thrown at the troop: a red ring warns where it lands

@@ -13,6 +13,16 @@ const FILES = ['shoot0', 'shoot1', 'shoot2', 'shoot3', 'hit0', 'hit1', 'hit2', '
   'lose0', 'lose1', 'lose2', 'weapon', 'mult', 'hero', 'power', 'coin0', 'coin1', 'coin2', 'boom', 'boombig', 'crumble', 'impact', 'throw',
   'roar', 'clang0', 'clang1', 'clang2', 'caster', 'orb', 'fire', 'frost', 'heal', 'warn', 'win', 'defeat', 'click', 'tick', 'buy', 'horde',
   'volley1', 'volley2', 'volley3', 'music_battle', 'music_boss', 'music_base'];
+// recorded sounds from the shared library (game-assets: Kenney CC0, Sonniss GDC bundle, zombie pack), see assets.json
+const L = (base, n, pad = 3, from = 0) => Array.from({ length: n }, (_, k) => 'lib/' + base + String(k + from).padStart(pad, '0'));
+const LIB = {
+  punch: L('impactpunch_heavy_', 5), soft: L('impactsoft_heavy_', 5), wood: L('impactwood_light_', 5), plate: L('impactplate_heavy_', 5),
+  mining: L('impactmining_', 5), plank: L('impactplank_medium_', 5), flesh: L('axe_flesh_hit_', 5, 2, 1), shield: L('shield_block_', 5, 2, 1),
+  coins: ['lib/handlecoins', 'lib/handlecoins2'], knife: ['lib/drawknife1', 'lib/drawknife2', 'lib/drawknife3'], cloth: ['lib/cloth1', 'lib/cloth2', 'lib/cloth3', 'lib/cloth4'],
+  zombie: Array.from({ length: 24 }, (_, k) => 'lib/zombie-' + (k + 1)),
+  latch: ['lib/metallatch'], boom: ['lib/distant_explosion'], debris: ['lib/metal_debris'], metal: ['lib/metal_impact'], crack: ['lib/tree_crack_fall'],
+};
+FILES.push(...Object.values(LIB).flat());
 const LOOPS = { horde: null, volley1: null, volley2: null, volley3: null, music_battle: null, music_boss: null, music_base: null };
 const loopGain = {};
 
@@ -112,9 +122,11 @@ const SHOOT = V('shoot', 4), HIT = V('hit', 4), KILL = V('kill', 3), LOSE = V('l
 export const panOf = (x) => x / 14;
 
 export const sfx = {
+  /** a zombie-like groan from the horde (recorded) */
+  groan(pan = 0, vol = 0.35) { play(LIB.zombie, { key: 'groan', vol, pitch: 0.12, rate: 0.8, max: 3, gap: 0.6, pan }); },
   shoot(pan = 0) { play(SHOOT, { key: 'shoot', vol: 0.45, pitch: 0.1, max: 4, gap: 0.09, pan }); }, // single shots on top of the volley loops
-  hit(pan = 0) { play(HIT, { key: 'hit', vol: 0.35, pitch: 0.12, max: 5, gap: 0.03, pan }); },
-  kill(pan = 0) { play(KILL, { key: 'kill', vol: 0.4, pitch: 0.12, max: 5, gap: 0.05, pan }); },
+  hit(pan = 0) { play(Math.random() < 0.5 ? LIB.punch : LIB.soft, { key: 'hit', vol: 0.3, pitch: 0.12, rate: 0.85, max: 5, gap: 0.035, pan }); },
+  kill(pan = 0) { play(LIB.wood, { key: 'kill', vol: 0.4, pitch: 0.15, rate: 0.75, max: 4, gap: 0.06, pan }); play(KILL, { key: 'kill2', vol: 0.3, pitch: 0.12, max: 3, gap: 0.12, pan }); },
   gain(n = 1, pan = 0) {
     if (n >= 40) play('warcrybig', { vol: 0.95, pitch: 0.03, max: 1, gap: 1.5 });
     else if (n >= 8) play('warcry', { vol: 0.85, pitch: 0.05, max: 2, gap: 0.6 });
@@ -122,30 +134,30 @@ export const sfx = {
   },
   /** the whole army shouts (level start, big win) */
   warcry(big = false) { play(big ? 'warcrybig' : 'warcry', { vol: 0.95, pitch: 0.03, max: 1, gap: 1 }); },
-  lose(n = 1, pan = 0) { play(LOSE, { key: 'lose', vol: Math.min(0.85, 0.4 + n * 0.04), pitch: 0.1, max: 3, gap: 0.08, pan }); },
-  weapon() { play('weapon', { vol: 0.85, pitch: 0, max: 1 }); },
+  lose(n = 1, pan = 0) { play(LIB.flesh, { key: 'flesh', vol: Math.min(0.8, 0.35 + n * 0.04), pitch: 0.1, max: 3, gap: 0.1, pan }); play(LOSE, { key: 'lose', vol: Math.min(0.7, 0.3 + n * 0.03), pitch: 0.1, max: 2, gap: 0.2, pan }); },
+  weapon() { play(LIB.knife, { key: 'knife', vol: 0.8, pitch: 0.05, max: 1 }); play(LIB.latch, { vol: 0.6, max: 1, delay: 0.15 }); play('weapon', { vol: 0.85, pitch: 0, max: 1 }); },
   mult() { play('mult', { vol: 0.85, pitch: 0, max: 1 }); },
-  hero() { play('hero', { vol: 0.8, pitch: 0, max: 1 }); },
+  hero() { play(LIB.mining, { key: 'mining', vol: 0.8, pitch: 0.08, rate: 0.8, max: 2 }); play('hero', { vol: 0.8, pitch: 0, max: 1, delay: 0.1 }); },
   power() { play('power', { vol: 0.7, pitch: 0.04, max: 2 }); },
-  explosion(big = false, pan = 0) { play(big ? 'boombig' : 'boom', { vol: big ? 1 : 0.8, pitch: 0.08, max: 3, gap: 0.06, pan }); },
-  wall(pan = 0) { play('crumble', { vol: 0.85, pitch: 0.06, max: 2, pan }); },
+  explosion(big = false, pan = 0) { play(LIB.boom, { key: 'rboom', vol: big ? 1 : 0.8, pitch: 0.1, rate: big ? 0.8 : 1, max: 3, gap: 0.08, pan }); play(big ? 'boombig' : 'boom', { vol: big ? 0.8 : 0.6, pitch: 0.08, max: 3, gap: 0.06, pan }); },
+  wall(pan = 0) { play('crumble', { vol: 0.8, pitch: 0.06, max: 2, pan }); play(LIB.mining, { key: 'mining', vol: 0.7, rate: 0.7, max: 2, pan }); play(LIB.debris, { vol: 0.35, rate: 0.6, max: 1, pan, delay: 0.1 }); },
   bossRoar() { play('roar', { vol: 0.95, pitch: 0.04, max: 1 }); },
   throwRock(pan = 0) { play('throw', { vol: 0.6, pitch: 0.1, max: 2, pan }); },
-  rockImpact(hit, pan = 0) { play('impact', { vol: hit ? 1 : 0.75, pitch: 0.08, max: 2, pan }); },
-  bossHit() { play(CLANG, { key: 'clang', vol: 0.3, pitch: 0.1, max: 3, gap: 0.09 }); },
+  rockImpact(hit, pan = 0) { play('impact', { vol: hit ? 0.9 : 0.7, pitch: 0.08, max: 2, pan }); play(LIB.boom, { key: 'rboom', vol: hit ? 0.7 : 0.5, rate: 1.3, max: 2, pan }); },
+  bossHit() { play(Math.random() < 0.5 ? LIB.shield : LIB.plate, { key: 'clang', vol: 0.32, pitch: 0.1, rate: 0.8, max: 3, gap: 0.1 }); },
   caster(pan = 0) { play('caster', { vol: 0.6, pitch: 0.05, max: 1, pan }); },
   orb(pan = 0) { play('orb', { vol: 0.5, pitch: 0.1, max: 2, pan }); },
   warn() { play('warn', { vol: 0.7, pitch: 0, max: 1, gap: 1 }); },
   heal() { play('heal', { vol: 0.35, pitch: 0.05, max: 1, gap: 0.5 }); },
   frost(pan = 0) { play('frost', { vol: 0.45, pitch: 0.1, max: 2, gap: 0.2, pan }); },
   fireball(pan = 0) { play('fire', { vol: 0.5, pitch: 0.1, max: 2, gap: 0.2, pan }); },
-  pickup(pan = 0) { play(COIN, { key: 'coin', vol: 0.5, pitch: 0.05, max: 3, gap: 0.05, pan }); },
+  pickup(pan = 0) { play(LIB.coins, { key: 'coin', vol: 0.55, pitch: 0.1, rate: 0.85, max: 3, gap: 0.08, pan }); play(LIB.cloth, { key: 'cloth', vol: 0.4, pitch: 0.1, max: 2, gap: 0.1, pan }); },
   win() { play('win', { vol: 0.9, pitch: 0, max: 1 }); },
   defeat() { play('defeat', { vol: 0.9, pitch: 0, max: 1 }); },
   /** a gate's number goes up: a short tick that climbs with the value */
-  tick(v = 0) { play('tick', { vol: 0.6, pitch: 0, rate: 0.85 + Math.min(0.5, Math.max(0, v + 15) / 60), max: 3, gap: 0.05 }); },
+  tick(v = 0) { play(LIB.plank, { key: 'tick', vol: 0.35, pitch: 0.05, rate: 0.9 + Math.min(0.5, Math.max(0, v + 15) / 60), max: 2, gap: 0.06 }); return; play('tick', { vol: 0.6, pitch: 0, rate: 0.85 + Math.min(0.5, Math.max(0, v + 15) / 60), max: 3, gap: 0.05 }); },
   click() { play('click', { vol: 0.5, pitch: 0.05, max: 2, gap: 0.04 }); },
-  coin() { play('buy', { vol: 0.6, pitch: 0.03, max: 2 }); },
+  coin() { play(LIB.coins, { key: 'buy', vol: 0.8, pitch: 0.05, max: 2 }); play('buy', { vol: 0.4, pitch: 0.03, max: 1 }); },
 };
 
 /** Short vibration where the phone supports it (Android; iPhone browsers ignore it). */

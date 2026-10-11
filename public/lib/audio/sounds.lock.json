@@ -1,0 +1,85 @@
+{
+  "library": "jonvmnielsen/game-assets",
+  "libraryCommit": "26a3e52",
+  "synced": "2026-10-11T09:58:44.076Z",
+  "licenses": {
+    "sonniss-gdc": {
+      "name": "Sonniss #GameAudioGDC Bundle License",
+      "file": "licenses/sonniss-gdc-game-audio-license.pdf",
+      "verified": "2026-10-10",
+      "summary": "Royalty-free, unlimited projects, personal + commercial, may modify, no attribution required. May not sell the sounds as they come (only incorporated in a project), may not claim authorship of the original recordings, no AI training."
+    }
+  },
+  "sounds": {
+    "jse-melee/axe_flesh_hit_01": {
+      "seconds": 0.78,
+      "bytes": 9762,
+      "license": "sonniss-gdc"
+    },
+    "jse-melee/axe_flesh_hit_02": {
+      "seconds": 0.97,
+      "bytes": 11956,
+      "license": "sonniss-gdc"
+    },
+    "jse-melee/axe_flesh_hit_03": {
+      "seconds": 1.04,
+      "bytes": 12897,
+      "license": "sonniss-gdc"
+    },
+    "jse-melee/axe_flesh_hit_04": {
+      "seconds": 0.86,
+      "bytes": 10703,
+      "license": "sonniss-gdc"
+    },
+    "jse-melee/axe_flesh_hit_05": {
+      "seconds": 0.91,
+      "bytes": 11329,
+      "license": "sonniss-gdc"
+    },
+    "jse-melee/shield_block_01": {
+      "seconds": 0.81,
+      "bytes": 10076,
+      "license": "sonniss-gdc"
+    },
+    "jse-melee/shield_block_02": {
+      "seconds": 0.89,
+      "bytes": 11016,
+      "license": "sonniss-gdc"
+    },
+    "jse-melee/shield_block_03": {
+      "seconds": 0.76,
+      "bytes": 9449,
+      "license": "sonniss-gdc"
+    },
+    "jse-melee/shield_block_04": {
+      "seconds": 0.81,
+      "bytes": 10076,
+      "license": "sonniss-gdc"
+    },
+    "jse-melee/shield_block_05": {
+      "seconds": 0.84,
+      "bytes": 10389,
+      "license": "sonniss-gdc"
+    },
+    "pp-warfare/distant_explosion": {
+      "seconds": 5.2,
+      "bytes": 62738,
+      "license": "sonniss-gdc"
+    },
+    "mw-metal/metal_debris": {
+      "seconds": 0.76,
+      "bytes": 9449,
+      "license": "sonniss-gdc"
+    },
+    "mw-metal/metal_impact": {
+      "seconds": 1.44,
+      "bytes": 17599,
+      "license": "sonniss-gdc"
+    },
+    "mw-lumberjack/tree_crack_fall": {
+      "seconds": 4.6,
+      "bytes": 55529,
+      "license": "sonniss-gdc"
+    }
+  }
+}

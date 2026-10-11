@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -21,8 +22,8 @@ const SNAP = params.has('snap'); // deterministic mode for screenshots
 // ---------------------------------------------------------------- renderer
 const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
-let pixelRatio = params.has('pr') ? +params.get('pr') : Math.min(window.devicePixelRatio || 1, SNAP ? 1 : 2); // phones are 2-3x: render at 2x so details stay sharp
-const MIN_PR = Math.min(window.devicePixelRatio || 1, 1.5); // adaptive quality never drops below this
+let pixelRatio = params.has('pr') ? +params.get('pr') : Math.min(window.devicePixelRatio || 1, SNAP ? 1 : 3); // full phone resolution (iPhone = 3x)
+const MIN_PR = Math.min(window.devicePixelRatio || 1, 2); // adaptive quality never drops below 2x
 renderer.setPixelRatio(pixelRatio);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -58,7 +59,7 @@ sun.shadow.normalBias = 0.03;
 scene.add(sun, sun.target);
 
 // post-processing
-const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: pixelRatio >= 2.5 ? 2 : 4 }); // at 3x the pixels are so small that 2x MSAA is enough
 const composer = new EffectComposer(renderer, rt);
 const renderPass = new RenderPass(scene, camera);
 composer.addPass(renderPass);
@@ -87,7 +88,7 @@ function resize() {
 window.addEventListener('resize', () => { resize(); baseView?.resize(window.innerWidth, window.innerHeight); });
 
 // ---------------------------------------------------------------- loading
-const loader = new GLTFLoader();
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder); // library models (game-assets) are meshopt-compressed
 const loadEl = document.getElementById('loading');
 let loaded = 0;
 const files = ['env.json', 'rogue.json', 'skeleton_minion_lod.json', 'skeleton_warrior.json', 'mage.json', 'skeleton_warrior_lod.json', 'skeleton_mage.json', 'knight.json'];
@@ -99,7 +100,14 @@ function load(f) {
     return g;
   });
 }
-const [envG, rogueG, minionG, warriorG, mageG, warriorLodG, skMageG, knightG] = await Promise.all(files.map(load));
+const [envG, rogueG, minionG, warriorG, mageOldG, warriorLodG, skMageG, knightG] = await Promise.all(files.map(load));
+// heroines: KayKit Adventurers 2.0 mage (from the shared library) with the 2.0 rig's animation sets
+const [mageG, rigGen, rigMove] = await Promise.all(['lib/heroine_mage.glb', 'lib/rig_general.glb', 'lib/rig_move.glb'].map((f) => loader.loadAsync(f)));
+{
+  // rename the 2.0 clips to the names the game already uses for its heroes
+  const rename = { Throw: 'Spellcast_Shoot', Idle_A: 'Idle', Running_A: 'Running_A', Use_Item: 'Cheer' };
+  mageG.animations = [...rigGen.animations, ...rigMove.animations].filter((c) => rename[c.name]).map((c) => { const k = c.clone(); k.name = rename[c.name]; return k; });
+}
 
 try { await Promise.race([document.fonts.load('80px "Lilita One"'), new Promise((r) => setTimeout(r, 1500))]); } catch (e) { /* fall back to system font */ }
 const world = buildWorld(scene, envG);
@@ -315,8 +323,9 @@ function drawGates() {
       if (_tp.z < 1) {
         let el = gateLabelPool[ln];
         if (!el) { el = document.createElement('div'); el.className = 'gl'; tagLayer.appendChild(el); gateLabelPool[ln] = el; el._t = ''; }
-        const text = g.op === 'mul' ? '×' + g.v : (g.v > 0 ? '+' : '−') + Math.abs(g.v);
-        if (el._t !== text) { el._t = text; el.textContent = text; }
+        const num = g.op === 'mul' ? '×' + g.v : (g.v > 0 ? '+' : g.v < 0 ? '−' : '') + Math.abs(g.v);
+        const text = g.shootable ? num + (g.v >= g.cap ? '<small>MAX</small>' : `<small>▲ op til ${g.cap > 0 ? '+' : ''}${g.cap}</small>`) : num;
+        if (el._t !== text) { el._t = text; el.innerHTML = text; }
         const cls = 'gl ' + kind + (g.flash > 0 ? ' up' : '');
         if (el.className !== cls) el.className = cls;
         const sc = Math.max(0.55, Math.min(1.3, 1.45 - (camera.position.z - g.z) / 60));
@@ -424,7 +433,7 @@ function updateRocks(dt) {
     if (s >= 1) {
       r.done = true;
       const hit = Math.abs(S.cx - r.tx) < c.radius + troopRadius() * 0.45;
-      if (hit && (S.phase === 'boss' || S.phase === 'horde')) { loseTroops(c.kills, r.tx, r.tz); flashScreen('rgba(255,60,30,0.9)', 0.35); }
+      if (hit && (S.phase === 'boss' || S.phase === 'horde')) { loseTroops(c.kills, r.tx, r.tz, 'rock'); flashScreen('rgba(255,60,30,0.9)', 0.35); }
       sfx.rockImpact(hit);
       S.shake = Math.max(S.shake, hit ? 0.6 : 0.3);
       for (let k = 0; k < 18; k++) puff(r.tx + (Math.random() - 0.5) * 2.5, 0.3, r.tz + (Math.random() - 0.5) * 2.5, 1, [0.6, 0.55, 0.5], 2.0);
@@ -701,7 +710,7 @@ function explodeBarrel(h, hitTroop) {
     if (e.state !== 'run') continue;
     if ((e.x - h.x) ** 2 + (e.z - h.z) ** 2 < c.blast * c.blast) { e.hp -= c.damage; e.flash = 0.1; if (e.hp <= 0) killEnemy(e, true); }
   }
-  if (hitTroop) loseTroops(c.kills, h.x, h.z);
+  if (hitTroop) loseTroops(c.kills, h.x, h.z, 'barrel');
   for (let k = 0; k < 120; k++) {
     const a = Math.random() * Math.PI * 2, r = Math.random() * c.blast * 0.7;
     glow.emit(h.x + Math.cos(a) * r * 0.5, 0.5 + Math.random() * 2, h.z + Math.sin(a) * r * 0.5, Math.cos(a) * 8, 3 + Math.random() * 9, Math.sin(a) * 8, 3.0, 1.1 + Math.random() * 0.8, 0.2, 0.8 + Math.random() * 0.7, 0.5 + Math.random() * 0.4, 8);
@@ -739,7 +748,7 @@ function updateHazards(dt, playing) {
     if (!h.hit && h.z + h.radius > troopFront && h.z - h.radius < troopBack && Math.abs(h.x - S.cx) < R + h.radius * 0.8) {
       h.hit = true;
       if (h.hazard === 'barrel') { explodeBarrel(h, true); continue; }
-      loseTroops(S.cfg.hazard.boulder.kills, h.x, h.z);
+      loseTroops(S.cfg.hazard.boulder.kills, h.x, h.z, 'boulder');
       S.shake = Math.max(S.shake, 0.6);
       sfx.rockImpact(true);
     }
@@ -806,9 +815,19 @@ function sideEvent(lane, deckState, z0 = SPAWN_Z) {
 
 // ---------------------------------------------------------------- encounters: both side lanes at once, so every encounter is a choice
 const rint = (a, b) => Math.round(a + Math.random() * (b - a));
-function addGate(lane, z, op, v) {
+/** troop damage per second right now (all soldiers firing), used to price shootable gates */
+function firepower() { return Math.max(8, S.count) * TROOP.boltDamage * WEAPON[S.weapon].mul * (S.mods?.dmg || 1) * fireSpeed() / SHOOT_LEN; }
+/**
+ * A number gate. Shootable gates ("▲") count up when shot, but only to their cap, and every point costs more than the last.
+ * The price is set from the troop's firepower when the gate appears: raising it fully always takes about gate.raiseTime seconds
+ * of the whole troop's fire — time the middle horde gets to come closer. Fixed gates can't be changed.
+ */
+function addGate(lane, z, op, v, o = {}) {
   const c = S.cfg.gate;
-  const g = { gate: true, lane, x: LANES[lane], z, op, v, acc: 0, step: c.step, hp: 1e9, max: 1e9, pending: 0, flash: 0, alive: true, passed: false };
+  const shootable = !!o.cap && op === 'add';
+  const points = shootable ? Math.max(1, o.cap - v) : 1;
+  const step = shootable ? firepower() * c.raiseTime / (points * (1 + c.stepGrowth * points / 2)) : 1e9;
+  const g = { gate: true, lane, x: LANES[lane], z, op, v, v0: v, cap: o.cap ?? v, shootable, acc: 0, step, raised: 0, hp: 1e9, max: 1e9, pending: 0, flash: 0, alive: true, passed: false };
   S.gates.push(g);
   return g;
 }
@@ -821,12 +840,25 @@ function encounter(z0 = SPAWN_Z) {
   const G = cfg.gate;
   switch (type) {
     case 'gates': {
-      // a pair of number gates. Shooting one raises its number, so a bad gate can be turned good (if you have time)
+      // a pair of gates that are never the same kind of choice: a sure thing against a gamble
+      // values follow the troop's size, so a gate means as much late in the level as it did at the start
+      const C = Math.max(12, S.count);
+      const base = Math.round(Math.max(rint(G.add[0], G.add[1]), C * (0.2 + Math.random() * 0.15)));
       const r = Math.random();
-      addGate(A, z0, 'add', rint(G.add[0], G.add[1]));
-      if (r < 0.35 && S.t > 6) addGate(B, z0, 'mul', 2);
-      else if (r < 0.7) addGate(B, z0, 'add', -rint(G.minus[0], G.minus[1]));
-      else addGate(B, z0, 'add', rint(G.add[0], G.add[1]) - rint(3, 8));
+      if (r < 0.45) {
+        // SURE vs GAMBLE: a fixed +N, or a minus gate you can shoot up to well above N (if you commit your fire)
+        addGate(A, z0, 'add', base);
+        const minus = -Math.round(base * (0.5 + Math.random() * 0.4));
+        addGate(B, z0, 'add', minus, { cap: Math.round(base * (1.7 + Math.random() * 0.5)) });
+      } else if (r < 0.75 && S.t > 6) {
+        // ×2 (fixed, with a cap) vs a small plus that can be shot up
+        addGate(A, z0, 'mul', 2);
+        addGate(B, z0, 'add', Math.round(base * 0.5), { cap: Math.round(base * 2.2) });
+      } else {
+        // a trap: a fixed minus next to a modest fixed plus — just read the numbers
+        addGate(A, z0, 'add', Math.round(base * 0.8));
+        addGate(B, z0, 'add', -Math.round(base * (0.8 + Math.random() * 0.5)));
+      }
       return 3;
     }
     case 'smallbig': {
@@ -897,7 +929,7 @@ function passGate(g) {
     gainTroops(g.v, true);
     if (!S.bot) { sfx.gain(Math.max(20, g.v)); troopRing([0.5, 1.2, 3.0], 60); flashScreen('rgba(120,190,255,0.9)', 0.25); }
   } else if (g.v < 0) {
-    loseTroops(-g.v, S.cx, TROOP_Z);
+    loseTroops(-g.v, S.cx, TROOP_Z, 'gate');
     if (!S.bot) { flashScreen('rgba(255,60,30,0.9)', 0.35); troopRing([3.0, 0.4, 0.3], 60); }
   }
   g.alive = false;
@@ -945,11 +977,12 @@ function gainTroops(n, quiet = false) {
 }
 
 /** Lose soldiers near (x,z); a visible soldier always falls so the hit reads on screen. */
-function loseTroops(n, x, z, label = true) {
+function loseTroops(n, x, z, why = 'enemy') {
   n = Math.min(n, S.count);
   if (S.mods.medic > 0) { let saved = 0; for (let k = 0; k < n; k++) if (Math.random() < S.mods.medic) saved++; n -= saved; } // Lazaret
   if (n <= 0) return;
   S.count -= n; S.lost += n;
+  S.stats.loss = S.stats.loss || {}; S.stats.loss[why] = (S.stats.loss[why] || 0) + n;
   if (!S.bot) { troopDelta(-n); sfx.lose(n); buzz(n >= 8 ? 60 : 25); }
   const fall = Math.min(n, 8);
   for (let k = 0; k < fall; k++) { const s = nearestSoldier(x, z); if (s) killSoldier(s); }
@@ -1343,7 +1376,7 @@ function buildTargets() {
   for (const it of S.items) if (it.alive && !COLLECT.has(it.kind) && !(it.lockedBy && it.lockedBy.alive)) laneTargets[it.lane].push(it);
   for (const h of S.hazards) if (h.alive) laneTargets[laneOf(h.x)].push(h);
   for (const w of S.walls) if (w.alive) laneTargets[w.lane].push(w);
-  for (const g of S.gates) if (g.alive && g.op === 'add' && g.v < S.cfg.gate.max) laneTargets[g.lane].push(g);
+  for (const g of S.gates) if (g.alive && g.shootable && g.v < g.cap) laneTargets[g.lane].push(g);
   if (S.boss && S.boss.state !== 'dead') laneTargets[laneOf(S.boss.x)].push(S.boss);
   for (const c of S.casterList) if (c.state !== 'dead') laneTargets[c.lane].push(c);
   for (const L of laneTargets) L.sort((a, b) => b.z - a.z);
@@ -1402,9 +1435,11 @@ function damage(t, dmg, hx, hy, hz) {
   if (t.gate) {
     // every gateStep of damage raises the gate's number by one
     if (!t.alive || t.passed) return;
+    if (!t.shootable || t.v >= t.cap) { sparks(hx, hy, hz + 0.3, 0.8, 0.8, 0.8, 1); return; } // fixed or full: the bolts just glance off
     t.acc += dmg;
     let up = 0;
-    while (t.acc >= t.step && t.v < S.cfg.gate.max) { t.acc -= t.step; t.v++; up++; }
+    // every point costs a little more than the last
+    while (t.v < t.cap && t.acc >= t.step * (1 + S.cfg.gate.stepGrowth * t.raised)) { t.acc -= t.step * (1 + S.cfg.gate.stepGrowth * t.raised); t.v++; t.raised++; up++; }
     if (up) { t.flash = 0.12; if (!S.bot) { glow.emit(t.x, 2.2, t.z + 0.3, 0, 2, 0, 0.6, 1.4, 3.0, 0.8, 0.25); sfx.tick(t.v); } }
     sparks(hx, hy, hz + 0.3, 0.6, 0.8, 1.0, 1);
     return;
@@ -1672,7 +1707,7 @@ function updateCasters(dt, playing) {
     glow.emit(x, y, z, 0, 0, 0, 1.8, 0.5, 3.4, 1.3, 0.12);
     glow.emit(x, y, z - 0.3, (Math.random() - 0.5) * 1.5, 0.6, -1.5, 1.2, 0.3, 2.6, 0.6, 0.3);
     if (k < 1) { S.orbs[w++] = o; continue; }
-    loseTroops(o.kills, S.cx, TROOP_Z);
+    loseTroops(o.kills, S.cx, TROOP_Z, 'caster');
     for (let n = 0; n < 30; n++) glow.emit(S.cx, 0.8, TROOP_Z, (Math.random() - 0.5) * 8, 2 + Math.random() * 5, (Math.random() - 0.5) * 8, 1.8, 0.5, 3.2, 0.5, 0.5, 9);
     S.shake = Math.max(S.shake, 0.25);
   }
@@ -1822,6 +1857,7 @@ function botTarget(style) {
   for (const h of S.hazards) if (h.alive && h.z > TROOP_Z - 16) avoid[laneOf(h.x)] = true;
   if (style !== 'nododge') for (const r of S.rocks) if (r.t > 0.3) avoid[laneOf(r.tx)] = true;
   for (const w of S.walls) if (w.alive && w.z > TROOP_Z - 9 && w.hp > dps * 1.2) avoid[w.lane] = true;
+  for (const g of S.gates) if (g.alive && !g.passed && g.z > TROOP_Z - 9 && g.op === 'add' && g.v < 0) avoid[g.lane] = true; // never walk through a minus gate
   const worst0 = threat.indexOf(Math.max(...threat));
   const worst = avoid[worst0] ? [LEFT, MID, RIGHT].filter((L) => !avoid[L]).sort((a, b) => threat[b] - threat[a])[0] ?? worst0 : worst0;
   for (const L of [LEFT, MID, RIGHT]) if (avoid[L]) reward[L] = 0;
@@ -1833,7 +1869,6 @@ function botTarget(style) {
   for (const g of S.gates) if (g.alive && !g.passed && g.z > TROOP_Z - 9) catchV[g.lane] += g.op === 'mul' ? Math.min(S.count, S.cfg.gate.multCap) * 2 : g.v * 3;
   for (const L of [LEFT, RIGHT]) if (avoid[L]) catchV[L] = 0;
   const bestCatch = catchV.indexOf(Math.max(...catchV));
-  for (const g of S.gates) if (g.alive && !g.passed && g.z > TROOP_Z - 7 && (g.op === 'add' && g.v < 0)) avoid[g.lane] = true;
   if (catchV[bestCatch] > 0 && front > (style === 'weak' ? 14 : 11)) return LANES[bestCatch] + (Math.random() - 0.5) * 0.5;
   // 'weak' = a cautious player who mostly defends and only grabs what is cheap
   if (threat[worst] > dps * (style === 'weak' ? 0.4 : 1.1)) return LANES[worst];
@@ -1853,6 +1888,7 @@ function update(dt) {
   if (!S.bot && Math.floor(clock * 4) !== Math.floor((clock - dt) * 4)) {
     let near = 0; for (const e of S.enemies) if (e.state === 'run' && e.z > -45) near++;
     setHordeLevel(S.phase === 'menu' || S.phase === 'won' || S.phase === 'lost' ? 0 : Math.min(1, 0.25 + near / 250));
+    if ((S.phase === 'horde' || S.phase === 'boss') && near > 15 && Math.random() < 0.3) { const e = S.enemies[Math.floor(Math.random() * S.enemies.length)]; if (e && e.state === 'run') sfx.groan(panOf(e.x), Math.min(0.5, 0.15 + near / 600)); }
   }
   if (S.phase === 'menu') { updateBattleSound(); glow.update(dt); dust.update(dt); updateFires(dt); return; } // map/base on top: the battlefield waits
   const playing = S.phase === 'horde' || S.phase === 'boss';
@@ -1988,7 +2024,7 @@ function update(dt) {
       e.x += THREE.MathUtils.clamp(ddx, -6 * dt, 6 * dt);
       yaw = Math.atan2(ddx, 3) * 0.6;
       if (e.z > front && Math.abs(e.x - S.cx) < troopRadius() + 0.6) {
-        loseTroops(ENEMY[e.type].cost, e.x, e.z, ENEMY[e.type].cost > 3);
+        loseTroops(ENEMY[e.type].cost, e.x, e.z, laneOf(e.x) === MID ? 'horde' : 'side');
         killEnemy(e, false);
         continue;
       }
@@ -2025,7 +2061,7 @@ function update(dt) {
       if (b.atk <= 0) {
         b.atk = 1.48;
         S.shake = Math.max(S.shake, 0.35);
-        loseTroops(cfg.bossKillsPerSwing, b.x, b.z + 2);
+        loseTroops(cfg.bossKillsPerSwing, b.x, b.z + 2, 'boss');
         puff(b.x, 0.2, b.z + 2.2, 10, [0.7, 0.62, 0.5], 1.6);
       }
     }
@@ -2102,7 +2138,7 @@ function updateConveyor(dt) {
     if (!w.crushed && w.z > TROOP_Z - troopRadius() * 0.7 - 1.0) {
       w.crushed = true;
       if (Math.abs(S.cx - w.x) < LANE_W / 2 + troopRadius() * 0.5 && (S.phase === 'horde' || S.phase === 'boss')) {
-        loseTroops(S.cfg.wallKills, w.x, w.z);
+        loseTroops(S.cfg.wallKills, w.x, w.z, 'wall');
         flashScreen('rgba(255,60,30,0.9)', 0.4); S.shake = Math.max(S.shake, 0.8); sfx.wall(panOf(w.x)); buzz(120);
         for (let k = 0; k < 40; k++) puff(w.x + (Math.random() - 0.5) * 4.5, Math.random() * 2, w.z, 1, [0.6, 0.58, 0.55], 1.8);
         w.alive = false; w.v.g.visible = false; wallPool.push(w.v); continue;
@@ -2263,7 +2299,7 @@ window.__game = {
       S.stats.lane[laneOf(S.cx)]++;
       if (i % 300 === 0) trace.push(`${Math.round(S.t)}s:${S.count}/w${S.weapon}/h${S.heroList.length}/c${S.casterList.filter((c) => c.state !== "dead").length}/f${Math.round(TROOP_Z - S.enemies.reduce((m, e) => e.state === "run" && e.lane === MID ? Math.max(m, e.z) : m, -99))}`);
     }
-    const out = { bot, level, result: S.phase, gold: Math.round(S.gold), t: Math.round(S.t), troop: S.count, peak, weapon: S.weapon, kills: S.kills, ev: S.stats.ev, pop: S.stats.pop, lane: S.stats.lane.map((v) => Math.round(v / 30)), boss: S.boss ? Math.max(0, Math.round(S.boss.hp)) : null, trace: trace.join(' ') };
+    const out = { bot, level, result: S.phase, gold: Math.round(S.gold), t: Math.round(S.t), troop: S.count, peak, weapon: S.weapon, kills: S.kills, ev: S.stats.ev, pop: S.stats.pop, loss: S.stats.loss, lane: S.stats.lane.map((v) => Math.round(v / 30)), boss: S.boss ? Math.max(0, Math.round(S.boss.hp)) : null, trace: trace.join(' ') };
     S.bot = null;
     return out;
   },

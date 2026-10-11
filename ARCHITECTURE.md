@@ -70,3 +70,9 @@ Ved indlæsning afspilles hver valgt animation på CPU'en, og hver vertex' posit
 - `S.lt`: tid i banen/bølgen (nulstilles i endeløs, `nextEndlessCycle`).
 - Lyd: `setFireLevel` (tre salve-løkker), `setMusic`, `setHordeLevel` i audio.js; `updateBattleSound()` i main.js.
 - Basen: `base.glb` hentes i baggrunden (`loadBase`); `renderPass.scene/camera` skiftes til `baseView` når basen er åben.
+
+## Runde 12: biblioteket
+- `assets.json` lister hvad spillet tager fra game-assets; `node ../game-assets/tools/sync.mjs .` kopierer til `public/lib` (glb + lyde), `tools/lib-audio.sh` laver mp3 i `public/sounds/lib`.
+- Bibliotekets .glb er meshopt-komprimerede: `GLTFLoader().setMeshoptDecoder(MeshoptDecoder)`. De kopieres som de er til `dist/lib`.
+- Heltinden bages fra `heroine_mage.glb` + `rig_general.glb`/`rig_move.glb` (klip omdøbt: Throw→Spellcast_Shoot, Idle_A→Idle, Use_Item→Cheer).
+- Talporte: `addGate(lane, z, op, v, { cap })`; `firepower()` sætter prisen pr. point (`gate.raiseTime`, `gate.stepGrowth`).

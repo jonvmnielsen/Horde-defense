@@ -1,0 +1,577 @@
+{
+  "library": "jonvmnielsen/game-assets",
+  "libraryCommit": "26a3e52",
+  "synced": "2026-10-11T09:58:44.076Z",
+  "assets": {
+    "heroine_mage": {
+      "id": "kaykit-adventurers-2/characters/mage",
+      "file": "heroine_mage.glb",
+      "bytes": 134816,
+      "sha": "ca0fcad21791",
+      "license": "CC0-1.0",
+      "kind": "model"
+    },
+    "heroine_rogue": {
+      "id": "kaykit-adventurers-2/characters/rogue",
+      "file": "heroine_rogue.glb",
+      "bytes": 147640,
+      "sha": "01c128ed1888",
+      "license": "CC0-1.0",
+      "kind": "model"
+    },
+    "rig_general": {
+      "id": "kaykit-adventurers-2/animations/rig_medium/rig_medium_general",
+      "file": "rig_general.glb",
+      "bytes": 212332,
+      "sha": "1a2a5e66fee8",
+      "license": "CC0-1.0",
+      "kind": "model",
+      "animations": [
+        "Idle_A",
+        "Throw",
+        "Use_Item",
+        "Death_A",
+        "Interact"
+      ]
+    },
+    "rig_move": {
+      "id": "kaykit-adventurers-2/animations/rig_medium/rig_medium_movementbasic",
+      "file": "rig_move.glb",
+      "bytes": 125048,
+      "sha": "91b003435099",
+      "license": "CC0-1.0",
+      "kind": "model",
+      "animations": [
+        "Running_A"
+      ]
+    },
+    "kenney-impact-sounds/impactpunch_heavy_000": {
+      "id": "kenney-impact-sounds/impactpunch_heavy_000",
+      "file": "kenney-impact-sounds/impactpunch_heavy_000.ogg",
+      "bytes": 11617,
+      "sha": "f8c949a60a44",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactpunch_heavy_001": {
+      "id": "kenney-impact-sounds/impactpunch_heavy_001",
+      "file": "kenney-impact-sounds/impactpunch_heavy_001.ogg",
+      "bytes": 10861,
+      "sha": "a969184798d8",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactpunch_heavy_002": {
+      "id": "kenney-impact-sounds/impactpunch_heavy_002",
+      "file": "kenney-impact-sounds/impactpunch_heavy_002.ogg",
+      "bytes": 9025,
+      "sha": "08a073fd8c00",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactpunch_heavy_003": {
+      "id": "kenney-impact-sounds/impactpunch_heavy_003",
+      "file": "kenney-impact-sounds/impactpunch_heavy_003.ogg",
+      "bytes": 10029,
+      "sha": "ebfb1d7b70de",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactpunch_heavy_004": {
+      "id": "kenney-impact-sounds/impactpunch_heavy_004",
+      "file": "kenney-impact-sounds/impactpunch_heavy_004.ogg",
+      "bytes": 10452,
+      "sha": "498f6bae984a",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactsoft_heavy_000": {
+      "id": "kenney-impact-sounds/impactsoft_heavy_000",
+      "file": "kenney-impact-sounds/impactsoft_heavy_000.ogg",
+      "bytes": 6570,
+      "sha": "b2b75f013ecb",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactsoft_heavy_001": {
+      "id": "kenney-impact-sounds/impactsoft_heavy_001",
+      "file": "kenney-impact-sounds/impactsoft_heavy_001.ogg",
+      "bytes": 6689,
+      "sha": "c61b666955b1",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactsoft_heavy_002": {
+      "id": "kenney-impact-sounds/impactsoft_heavy_002",
+      "file": "kenney-impact-sounds/impactsoft_heavy_002.ogg",
+      "bytes": 6749,
+      "sha": "0b8df7ffc157",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactsoft_heavy_003": {
+      "id": "kenney-impact-sounds/impactsoft_heavy_003",
+      "file": "kenney-impact-sounds/impactsoft_heavy_003.ogg",
+      "bytes": 6665,
+      "sha": "5bcbb39ebee0",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactsoft_heavy_004": {
+      "id": "kenney-impact-sounds/impactsoft_heavy_004",
+      "file": "kenney-impact-sounds/impactsoft_heavy_004.ogg",
+      "bytes": 6478,
+      "sha": "57eae8421d90",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactwood_light_000": {
+      "id": "kenney-impact-sounds/impactwood_light_000",
+      "file": "kenney-impact-sounds/impactwood_light_000.ogg",
+      "bytes": 6343,
+      "sha": "198e7b73922d",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactwood_light_001": {
+      "id": "kenney-impact-sounds/impactwood_light_001",
+      "file": "kenney-impact-sounds/impactwood_light_001.ogg",
+      "bytes": 6373,
+      "sha": "443b058642bc",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactwood_light_002": {
+      "id": "kenney-impact-sounds/impactwood_light_002",
+      "file": "kenney-impact-sounds/impactwood_light_002.ogg",
+      "bytes": 6366,
+      "sha": "9130f8516038",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactwood_light_003": {
+      "id": "kenney-impact-sounds/impactwood_light_003",
+      "file": "kenney-impact-sounds/impactwood_light_003.ogg",
+      "bytes": 6381,
+      "sha": "2bee923de088",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactwood_light_004": {
+      "id": "kenney-impact-sounds/impactwood_light_004",
+      "file": "kenney-impact-sounds/impactwood_light_004.ogg",
+      "bytes": 6395,
+      "sha": "16a16bd30def",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactplate_heavy_000": {
+      "id": "kenney-impact-sounds/impactplate_heavy_000",
+      "file": "kenney-impact-sounds/impactplate_heavy_000.ogg",
+      "bytes": 10032,
+      "sha": "43f09da21528",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactplate_heavy_001": {
+      "id": "kenney-impact-sounds/impactplate_heavy_001",
+      "file": "kenney-impact-sounds/impactplate_heavy_001.ogg",
+      "bytes": 8713,
+      "sha": "5b0f6ea35f18",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactplate_heavy_002": {
+      "id": "kenney-impact-sounds/impactplate_heavy_002",
+      "file": "kenney-impact-sounds/impactplate_heavy_002.ogg",
+      "bytes": 10188,
+      "sha": "30408ac1a005",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactplate_heavy_003": {
+      "id": "kenney-impact-sounds/impactplate_heavy_003",
+      "file": "kenney-impact-sounds/impactplate_heavy_003.ogg",
+      "bytes": 8490,
+      "sha": "c32d4816c566",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactplate_heavy_004": {
+      "id": "kenney-impact-sounds/impactplate_heavy_004",
+      "file": "kenney-impact-sounds/impactplate_heavy_004.ogg",
+      "bytes": 11092,
+      "sha": "5e30b019ce4d",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactmining_000": {
+      "id": "kenney-impact-sounds/impactmining_000",
+      "file": "kenney-impact-sounds/impactmining_000.ogg",
+      "bytes": 12035,
+      "sha": "97ce13f67b7b",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactmining_001": {
+      "id": "kenney-impact-sounds/impactmining_001",
+      "file": "kenney-impact-sounds/impactmining_001.ogg",
+      "bytes": 11481,
+      "sha": "a0ccab4e4c2b",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactmining_002": {
+      "id": "kenney-impact-sounds/impactmining_002",
+      "file": "kenney-impact-sounds/impactmining_002.ogg",
+      "bytes": 11235,
+      "sha": "5851515150e0",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactmining_003": {
+      "id": "kenney-impact-sounds/impactmining_003",
+      "file": "kenney-impact-sounds/impactmining_003.ogg",
+      "bytes": 12160,
+      "sha": "e87550f8ad63",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactmining_004": {
+      "id": "kenney-impact-sounds/impactmining_004",
+      "file": "kenney-impact-sounds/impactmining_004.ogg",
+      "bytes": 11668,
+      "sha": "22ef2741fcd4",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactplank_medium_000": {
+      "id": "kenney-impact-sounds/impactplank_medium_000",
+      "file": "kenney-impact-sounds/impactplank_medium_000.ogg",
+      "bytes": 12016,
+      "sha": "2b2a669e55d2",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactplank_medium_001": {
+      "id": "kenney-impact-sounds/impactplank_medium_001",
+      "file": "kenney-impact-sounds/impactplank_medium_001.ogg",
+      "bytes": 12082,
+      "sha": "3a5285db9ae0",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactplank_medium_002": {
+      "id": "kenney-impact-sounds/impactplank_medium_002",
+      "file": "kenney-impact-sounds/impactplank_medium_002.ogg",
+      "bytes": 12313,
+      "sha": "7c3d0938e9c5",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactplank_medium_003": {
+      "id": "kenney-impact-sounds/impactplank_medium_003",
+      "file": "kenney-impact-sounds/impactplank_medium_003.ogg",
+      "bytes": 12138,
+      "sha": "3cddf41ed835",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-impact-sounds/impactplank_medium_004": {
+      "id": "kenney-impact-sounds/impactplank_medium_004",
+      "file": "kenney-impact-sounds/impactplank_medium_004.ogg",
+      "bytes": 12084,
+      "sha": "23fe3ac2709b",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-rpg-audio/handlecoins": {
+      "id": "kenney-rpg-audio/handlecoins",
+      "file": "kenney-rpg-audio/handlecoins.ogg",
+      "bytes": 25394,
+      "sha": "57cba4460509",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-rpg-audio/handlecoins2": {
+      "id": "kenney-rpg-audio/handlecoins2",
+      "file": "kenney-rpg-audio/handlecoins2.ogg",
+      "bytes": 13094,
+      "sha": "6ba974fe74d8",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-rpg-audio/drawknife1": {
+      "id": "kenney-rpg-audio/drawknife1",
+      "file": "kenney-rpg-audio/drawknife1.ogg",
+      "bytes": 11134,
+      "sha": "10c89c843033",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-rpg-audio/drawknife2": {
+      "id": "kenney-rpg-audio/drawknife2",
+      "file": "kenney-rpg-audio/drawknife2.ogg",
+      "bytes": 12395,
+      "sha": "502a1d933242",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-rpg-audio/drawknife3": {
+      "id": "kenney-rpg-audio/drawknife3",
+      "file": "kenney-rpg-audio/drawknife3.ogg",
+      "bytes": 12726,
+      "sha": "708dcfab46f2",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-rpg-audio/metallatch": {
+      "id": "kenney-rpg-audio/metallatch",
+      "file": "kenney-rpg-audio/metallatch.ogg",
+      "bytes": 10208,
+      "sha": "90c2e0a0e26b",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-rpg-audio/cloth1": {
+      "id": "kenney-rpg-audio/cloth1",
+      "file": "kenney-rpg-audio/cloth1.ogg",
+      "bytes": 16508,
+      "sha": "8175b60e772f",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-rpg-audio/cloth2": {
+      "id": "kenney-rpg-audio/cloth2",
+      "file": "kenney-rpg-audio/cloth2.ogg",
+      "bytes": 11787,
+      "sha": "24b65b9ed97c",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-rpg-audio/cloth3": {
+      "id": "kenney-rpg-audio/cloth3",
+      "file": "kenney-rpg-audio/cloth3.ogg",
+      "bytes": 12432,
+      "sha": "bd79a62abd78",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-rpg-audio/cloth4": {
+      "id": "kenney-rpg-audio/cloth4",
+      "file": "kenney-rpg-audio/cloth4.ogg",
+      "bytes": 11043,
+      "sha": "dccec814e3e3",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-rpg-audio/clothbelt": {
+      "id": "kenney-rpg-audio/clothbelt",
+      "file": "kenney-rpg-audio/clothbelt.ogg",
+      "bytes": 21491,
+      "sha": "15802cf3102b",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "kenney-rpg-audio/clothbelt2": {
+      "id": "kenney-rpg-audio/clothbelt2",
+      "file": "kenney-rpg-audio/clothbelt2.ogg",
+      "bytes": 20013,
+      "sha": "f4396fa96aa3",
+      "license": "CC0-1.0",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-1": {
+      "id": "zombie-sounds/zombie-1",
+      "file": "zombie-sounds/zombie-1.ogg",
+      "bytes": 16605,
+      "sha": "5e1891a0218b",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-10": {
+      "id": "zombie-sounds/zombie-10",
+      "file": "zombie-sounds/zombie-10.ogg",
+      "bytes": 14800,
+      "sha": "7dfeafda4194",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-11": {
+      "id": "zombie-sounds/zombie-11",
+      "file": "zombie-sounds/zombie-11.ogg",
+      "bytes": 12150,
+      "sha": "2a2833f9fe36",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-12": {
+      "id": "zombie-sounds/zombie-12",
+      "file": "zombie-sounds/zombie-12.ogg",
+      "bytes": 16178,
+      "sha": "92052356deb5",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-13": {
+      "id": "zombie-sounds/zombie-13",
+      "file": "zombie-sounds/zombie-13.ogg",
+      "bytes": 13209,
+      "sha": "275a37233570",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-14": {
+      "id": "zombie-sounds/zombie-14",
+      "file": "zombie-sounds/zombie-14.ogg",
+      "bytes": 14529,
+      "sha": "793384fdfa59",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-15": {
+      "id": "zombie-sounds/zombie-15",
+      "file": "zombie-sounds/zombie-15.ogg",
+      "bytes": 17307,
+      "sha": "9afeb30959db",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-16": {
+      "id": "zombie-sounds/zombie-16",
+      "file": "zombie-sounds/zombie-16.ogg",
+      "bytes": 23962,
+      "sha": "32296069917e",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-17": {
+      "id": "zombie-sounds/zombie-17",
+      "file": "zombie-sounds/zombie-17.ogg",
+      "bytes": 28482,
+      "sha": "18ceca9a0c06",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-18": {
+      "id": "zombie-sounds/zombie-18",
+      "file": "zombie-sounds/zombie-18.ogg",
+      "bytes": 21012,
+      "sha": "378bd9044f69",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-19": {
+      "id": "zombie-sounds/zombie-19",
+      "file": "zombie-sounds/zombie-19.ogg",
+      "bytes": 19368,
+      "sha": "06ff85a35bf0",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-2": {
+      "id": "zombie-sounds/zombie-2",
+      "file": "zombie-sounds/zombie-2.ogg",
+      "bytes": 14701,
+      "sha": "9be474c436ab",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-20": {
+      "id": "zombie-sounds/zombie-20",
+      "file": "zombie-sounds/zombie-20.ogg",
+      "bytes": 18594,
+      "sha": "a777b586ca55",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-21": {
+      "id": "zombie-sounds/zombie-21",
+      "file": "zombie-sounds/zombie-21.ogg",
+      "bytes": 21354,
+      "sha": "f2bdd23ef0ed",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-22": {
+      "id": "zombie-sounds/zombie-22",
+      "file": "zombie-sounds/zombie-22.ogg",
+      "bytes": 14381,
+      "sha": "c5fbe1c0a67f",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-23": {
+      "id": "zombie-sounds/zombie-23",
+      "file": "zombie-sounds/zombie-23.ogg",
+      "bytes": 16021,
+      "sha": "c7a3b3e8e50e",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-24": {
+      "id": "zombie-sounds/zombie-24",
+      "file": "zombie-sounds/zombie-24.ogg",
+      "bytes": 9219,
+      "sha": "4082e208f8a4",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-3": {
+      "id": "zombie-sounds/zombie-3",
+      "file": "zombie-sounds/zombie-3.ogg",
+      "bytes": 12985,
+      "sha": "d8a22d706924",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-4": {
+      "id": "zombie-sounds/zombie-4",
+      "file": "zombie-sounds/zombie-4.ogg",
+      "bytes": 15644,
+      "sha": "95f4822219d1",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-5": {
+      "id": "zombie-sounds/zombie-5",
+      "file": "zombie-sounds/zombie-5.ogg",
+      "bytes": 11970,
+      "sha": "dd39fefd5a67",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-6": {
+      "id": "zombie-sounds/zombie-6",
+      "file": "zombie-sounds/zombie-6.ogg",
+      "bytes": 12186,
+      "sha": "3aef93d299e7",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-7": {
+      "id": "zombie-sounds/zombie-7",
+      "file": "zombie-sounds/zombie-7.ogg",
+      "bytes": 13097,
+      "sha": "df3bab9447b0",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-8": {
+      "id": "zombie-sounds/zombie-8",
+      "file": "zombie-sounds/zombie-8.ogg",
+      "bytes": 16954,
+      "sha": "b9eb8acdae45",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    },
+    "zombie-sounds/zombie-9": {
+      "id": "zombie-sounds/zombie-9",
+      "file": "zombie-sounds/zombie-9.ogg",
+      "bytes": 17202,
+      "sha": "f40ac1f039aa",
+      "license": "LicenseRef-unverified",
+      "kind": "audio"
+    }
+  }
+}

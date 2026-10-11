@@ -1,0 +1,29 @@
+{
+  "out": "public/lib",
+  "audioOut": "public/lib/audio",
+  "assets": [
+    { "id": "kaykit-adventurers-2/characters/mage", "as": "heroine_mage" },
+    { "id": "kaykit-adventurers-2/characters/rogue", "as": "heroine_rogue" },
+    { "id": "kaykit-adventurers-2/animations/rig_medium/rig_medium_general", "as": "rig_general", "animations": ["Idle_A", "Throw", "Use_Item", "Death_A", "Interact"] },
+    { "id": "kaykit-adventurers-2/animations/rig_medium/rig_medium_movementbasic", "as": "rig_move", "animations": ["Running_A"] },
+    "kenney-impact-sounds/impactpunch_heavy_*",
+    "kenney-impact-sounds/impactsoft_heavy_*",
+    "kenney-impact-sounds/impactwood_light_*",
+    "kenney-impact-sounds/impactplate_heavy_*",
+    "kenney-impact-sounds/impactmining_*",
+    "kenney-impact-sounds/impactplank_medium_*",
+    "kenney-rpg-audio/handlecoins*",
+    "kenney-rpg-audio/drawknife*",
+    "kenney-rpg-audio/metallatch",
+    "kenney-rpg-audio/cloth*",
+    "zombie-sounds/zombie-*"
+  ],
+  "audio": [
+    "jse-melee/axe_flesh_hit_*",
+    "jse-melee/shield_block_*",
+    "pp-warfare/distant_explosion",
+    "mw-metal/metal_debris",
+    "mw-metal/metal_impact",
+    "mw-lumberjack/tree_crack_fall"
+  ]
+}
